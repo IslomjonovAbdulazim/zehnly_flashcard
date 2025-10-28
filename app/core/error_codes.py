@@ -53,6 +53,10 @@ class ErrorCode(str, Enum):
     OPERATION_NOT_ALLOWED = "OPERATION_NOT_ALLOWED"
     DUPLICATE_OPERATION = "DUPLICATE_OPERATION"
     INVALID_OPERATION_STATE = "INVALID_OPERATION_STATE"
+    
+    # Vocabulary system errors
+    SYSTEM_LIMIT_EXCEEDED = "SYSTEM_LIMIT_EXCEEDED"  # Hard system limits
+    PLAN_LIMIT_EXCEEDED = "PLAN_LIMIT_EXCEEDED"      # Plan-specific limits (upgrade needed)
 
 # Error messages for development/logging (not sent to frontend)
 ERROR_MESSAGES = {
@@ -107,4 +111,8 @@ ERROR_MESSAGES = {
     ErrorCode.OPERATION_NOT_ALLOWED: "Operation not allowed",
     ErrorCode.DUPLICATE_OPERATION: "Duplicate operation detected",
     ErrorCode.INVALID_OPERATION_STATE: "Invalid operation state",
+    
+    # Vocabulary system errors
+    ErrorCode.SYSTEM_LIMIT_EXCEEDED: "System limit exceeded",
+    ErrorCode.PLAN_LIMIT_EXCEEDED: "Plan limit exceeded - upgrade to premium",
 }

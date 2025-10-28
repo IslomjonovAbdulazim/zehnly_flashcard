@@ -1,5 +1,6 @@
 from typing import List, Optional
-from pydantic import BaseSettings, AnyHttpUrl, validator
+from pydantic_settings import BaseSettings
+from pydantic import AnyHttpUrl, field_validator
 import secrets
 
 class Settings(BaseSettings):
@@ -13,7 +14,8 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
     
     # Database
-    DATABASE_URL: Optional[str] = "sqlite:///./app.db"
+    DATABASE_URL: Optional[str] = None
+    REDIS_URL: Optional[str] = None
     
     # CORS
     ALLOWED_HOSTS: List[str] = ["*"]
@@ -22,7 +24,19 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
     
-    @validator("ALLOWED_HOSTS", pre=True)
+    # External APIs
+    NARAKEET: Optional[str] = None
+    
+    # Google Cloud
+    GOOGLE_CLOUD_PROJECT: Optional[str] = None
+    GOOGLE_CLOUD_BUCKET: Optional[str] = None
+    GOOGLE_CLOUD_PRIVATE_KEY_ID: Optional[str] = None
+    GOOGLE_CLOUD_PRIVATE_KEY: Optional[str] = None
+    GOOGLE_CLOUD_CLIENT_EMAIL: Optional[str] = None
+    GOOGLE_CLOUD_CLIENT_ID: Optional[str] = None
+    
+    @field_validator("ALLOWED_HOSTS", mode="before")
+    @classmethod
     def assemble_cors_origins(cls, v):
         if isinstance(v, str) and not v.startswith("["):
             return [i.strip() for i in v.split(",")]

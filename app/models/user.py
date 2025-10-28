@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 
 from app.config.database import Base
 
@@ -16,3 +17,7 @@ class User(Base):
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    
+    # Relationships
+    owned_folders = relationship("VocabularyFolder", back_populates="owner", cascade="all, delete-orphan")
+    followed_folders = relationship("FolderFollower", back_populates="user", cascade="all, delete-orphan")

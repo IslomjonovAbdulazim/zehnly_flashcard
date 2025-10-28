@@ -4,17 +4,20 @@ from sqlalchemy.orm import relationship
 
 from app.config.database import Base
 
-class Folder(Base):
-    __tablename__ = "folders"
+class VocabularyFolder(Base):
+    __tablename__ = "vocabulary_folders"
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     title = Column(String, nullable=False)
-    language = Column(String, nullable=False)  # e.g., "en", "es", "fr", "ar"
+    target_language = Column(String, nullable=False)  # Language user wants to learn
     is_active = Column(Boolean, default=True)
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     
-    # Relationship to user
-    user = relationship("User")
+    # Relationships
+    owner = relationship("User", back_populates="owned_folders")
+    words = relationship("VocabularyWord", back_populates="folder", cascade="all, delete-orphan")
+    share_code = relationship("FolderShareCode", back_populates="folder", cascade="all, delete-orphan", uselist=False)  # One-to-one
+    followers = relationship("FolderFollower", back_populates="folder", cascade="all, delete-orphan")
