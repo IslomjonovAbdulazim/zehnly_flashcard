@@ -1,9 +1,10 @@
 from typing import List, Optional
-from fastapi import HTTPException, status
+from fastapi import status
 
-from app.core.security import get_password_hash, verify_password, create_access_token
+from app.core.exceptions import APIException
+from app.core.error_codes import ErrorCode
 from app.repositories.user_repo import UserRepository
-from app.schemas.user import UserCreate, UserUpdate, UserLogin, Token
+from app.schemas.user import UserCreate, UserUpdate, UserStatsResponse
 from app.models.user import User
 
 class UserService:
@@ -11,42 +12,30 @@ class UserService:
         self.user_repo = user_repo
 
     async def create_user(self, user_data: UserCreate) -> User:
-        existing_user = self.user_repo.get_by_email(user_data.email)
+        # Check if user already exists by external_id
+        existing_user = self.user_repo.get_by_external_id(user_data.external_id)
         if existing_user:
-            raise HTTPException(
+            raise APIException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already registered"
+                error_code=ErrorCode.EMAIL_ALREADY_EXISTS,
+                detail="User with this external_id already exists"
             )
         
-        existing_username = self.user_repo.get_by_username(user_data.username)
-        if existing_username:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Username already taken"
-            )
-
-        hashed_password = get_password_hash(user_data.password)
-        user_dict = user_data.dict(exclude={"password"})
-        user_dict["hashed_password"] = hashed_password
-        
+        user_dict = user_data.dict()
         return self.user_repo.create_user(user_dict)
 
-    async def authenticate_user(self, login_data: UserLogin) -> Token:
-        user = self.user_repo.get_by_email(login_data.email)
-        if not user or not verify_password(login_data.password, user.hashed_password):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Incorrect email or password"
-            )
-        
-        if not user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Inactive user"
-            )
+    async def get_user_by_external_id(self, external_id: str) -> Optional[User]:
+        return self.user_repo.get_by_external_id(external_id)
 
-        access_token = create_access_token(data={"sub": str(user.id)})
-        return Token(access_token=access_token, token_type="bearer")
+    async def get_or_create_user(self, external_id: str, user_data: dict = None) -> User:
+        """Get existing user or create new one if not exists"""
+        user = self.user_repo.get_by_external_id(external_id)
+        if not user:
+            create_data = {"external_id": external_id}
+            if user_data:
+                create_data.update(user_data)
+            user = self.user_repo.create_user(create_data)
+        return user
 
     async def get_users(self, skip: int = 0, limit: int = 10) -> List[User]:
         return self.user_repo.get_all(skip=skip, limit=limit)
@@ -54,23 +43,29 @@ class UserService:
     async def get_user_by_id(self, user_id: int) -> Optional[User]:
         return self.user_repo.get_by_id(user_id)
 
-    async def update_user(self, user_id: int, user_data: UserUpdate) -> User:
-        user = self.user_repo.get_by_id(user_id)
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
-            )
-
+    async def update_user(self, user: User, user_data: UserUpdate) -> User:
         update_data = user_data.dict(exclude_unset=True)
         return self.user_repo.update_user(user, update_data)
+
+    async def update_user_by_external_id(self, external_id: str, user_data: UserUpdate) -> User:
+        user = self.user_repo.get_by_external_id(external_id)
+        if not user:
+            raise APIException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                error_code=ErrorCode.USER_NOT_FOUND
+            )
+        return await self.update_user(user, user_data)
 
     async def delete_user(self, user_id: int) -> bool:
         user = self.user_repo.get_by_id(user_id)
         if not user:
-            raise HTTPException(
+            raise APIException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
+                error_code=ErrorCode.USER_NOT_FOUND
             )
-        
         return self.user_repo.delete(user_id)
+
+    async def get_user_stats(self) -> UserStatsResponse:
+        """Get overall user statistics"""
+        stats = self.user_repo.get_user_stats()
+        return UserStatsResponse(**stats)

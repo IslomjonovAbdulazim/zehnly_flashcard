@@ -1,6 +1,8 @@
 from typing import List, Optional
-from fastapi import HTTPException, status
+from fastapi import status
 
+from app.core.exceptions import APIException
+from app.core.error_codes import ErrorCode
 from app.repositories.product_repo import ProductRepository
 from app.schemas.product import ProductCreate, ProductUpdate
 from app.models.product import Product
@@ -12,9 +14,9 @@ class ProductService:
     async def create_product(self, product_data: ProductCreate) -> Product:
         existing_product = self.product_repo.get_by_sku(product_data.sku)
         if existing_product:
-            raise HTTPException(
+            raise APIException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="SKU already exists"
+                error_code=ErrorCode.SKU_ALREADY_EXISTS
             )
 
         product_dict = product_data.dict()
@@ -32,9 +34,9 @@ class ProductService:
     async def update_product(self, product_id: int, product_data: ProductUpdate) -> Product:
         product = self.product_repo.get_by_id(product_id)
         if not product:
-            raise HTTPException(
+            raise APIException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Product not found"
+                error_code=ErrorCode.PRODUCT_NOT_FOUND
             )
 
         update_data = product_data.dict(exclude_unset=True)
@@ -43,9 +45,9 @@ class ProductService:
     async def delete_product(self, product_id: int) -> bool:
         product = self.product_repo.get_by_id(product_id)
         if not product:
-            raise HTTPException(
+            raise APIException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Product not found"
+                error_code=ErrorCode.PRODUCT_NOT_FOUND
             )
         
         return self.product_repo.delete(product_id)

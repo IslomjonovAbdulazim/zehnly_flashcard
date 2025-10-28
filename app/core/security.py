@@ -1,8 +1,11 @@
 from datetime import datetime, timedelta
 from typing import Optional
 
-from fastapi import HTTPException, status
+from fastapi import status
 from jose import JWTError, jwt
+
+from app.core.exceptions import APIException
+from app.core.error_codes import ErrorCode
 from passlib.context import CryptContext
 
 from app.config.settings import settings
@@ -31,8 +34,7 @@ def verify_token(token: str) -> dict:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
         return payload
     except JWTError:
-        raise HTTPException(
+        raise APIException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
+            error_code=ErrorCode.INVALID_TOKEN
         )

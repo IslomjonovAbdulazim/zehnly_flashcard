@@ -8,8 +8,11 @@ class UserRepository(BaseRepository[User]):
     def __init__(self, db: Session):
         super().__init__(User, db)
 
-    def get_by_email(self, email: str) -> Optional[User]:
-        return self.db.query(User).filter(User.email == email).first()
+    def get_by_external_id(self, external_id: str) -> Optional[User]:
+        return self.db.query(User).filter(User.external_id == external_id).first()
+
+    def get_by_contact(self, contact: str) -> Optional[User]:
+        return self.db.query(User).filter(User.contact == contact).first()
 
     def get_by_username(self, username: str) -> Optional[User]:
         return self.db.query(User).filter(User.username == username).first()
@@ -22,3 +25,13 @@ class UserRepository(BaseRepository[User]):
 
     def update_user(self, user: User, user_data: dict) -> User:
         return self.update(user, user_data)
+
+    def get_user_stats(self) -> dict:
+        """Get overall user statistics"""
+        total_users = self.db.query(User).count()
+        active_users = self.db.query(User).filter(User.is_active == True).count()
+        
+        return {
+            "total_users": total_users,
+            "active_users": active_users
+        }

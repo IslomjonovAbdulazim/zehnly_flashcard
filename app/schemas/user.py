@@ -1,19 +1,20 @@
 from typing import Optional
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 from datetime import datetime
 
 class UserBase(BaseModel):
-    email: EmailStr
-    username: str
+    external_id: str  # MongoDB ObjectId from main server
+    contact: Optional[str] = None  # Phone number or email
+    username: Optional[str] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     is_active: bool = True
 
 class UserCreate(UserBase):
-    password: str
+    pass
 
 class UserUpdate(BaseModel):
-    email: Optional[EmailStr] = None
+    contact: Optional[str] = None
     username: Optional[str] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
@@ -27,10 +28,6 @@ class UserResponse(UserBase):
     class Config:
         orm_mode = True
 
-class UserLogin(BaseModel):
-    email: EmailStr
-    password: str
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str
+class UserStatsResponse(BaseModel):
+    total_users: int
+    active_users: int

@@ -1,8 +1,10 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 
 from app.api.deps import get_product_service
 from app.core.dependencies import get_current_user
+from app.core.exceptions import APIException
+from app.core.error_codes import ErrorCode
 from app.schemas.product import ProductCreate, ProductResponse, ProductUpdate
 from app.services.product_service import ProductService
 from app.models.user import User
@@ -32,7 +34,10 @@ async def get_product_by_id(
 ):
     product = await product_service.get_product_by_id(product_id)
     if not product:
-        raise HTTPException(status_code=404, detail="Product not found")
+        raise APIException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            error_code=ErrorCode.PRODUCT_NOT_FOUND
+        )
     return product
 
 @router.put("/{product_id}", response_model=ProductResponse)

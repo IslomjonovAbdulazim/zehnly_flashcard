@@ -1,8 +1,10 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 
 from app.api.deps import get_user_service
 from app.core.dependencies import get_current_user
+from app.core.exceptions import APIException
+from app.core.error_codes import ErrorCode
 from app.schemas.user import UserCreate, UserResponse, UserUpdate, UserLogin, Token
 from app.services.user_service import UserService
 from app.models.user import User
@@ -46,7 +48,10 @@ async def get_user_by_id(
 ):
     user = await user_service.get_user_by_id(user_id)
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise APIException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            error_code=ErrorCode.USER_NOT_FOUND
+        )
     return user
 
 @router.put("/{user_id}", response_model=UserResponse)

@@ -1,9 +1,11 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
 from app.config.database import get_db
 from app.core.security import verify_token
+from app.core.exceptions import APIException
+from app.core.error_codes import ErrorCode
 from app.repositories.user_repo import UserRepository
 
 security = HTTPBearer()
@@ -17,18 +19,18 @@ def get_current_user(
     user_id = payload.get("sub")
     
     if user_id is None:
-        raise HTTPException(
+        raise APIException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials"
+            error_code=ErrorCode.INVALID_TOKEN
         )
     
     user_repo = UserRepository(db)
     user = user_repo.get_by_id(int(user_id))
     
     if user is None:
-        raise HTTPException(
+        raise APIException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found"
+            error_code=ErrorCode.USER_NOT_FOUND
         )
     
     return user
