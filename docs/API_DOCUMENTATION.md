@@ -54,6 +54,55 @@ Register new user or update existing user information.
 }
 ```
 
+### Check User Registration
+**GET** `/api/v1/users/check/{external_id}`
+
+Check if a user is registered in the microservice by their external_id.
+
+**Path Parameters:**
+- `external_id` (string): MongoDB ObjectId from main service
+
+**Response:** `200 OK` (user exists) or `404 Not Found` (user doesn't exist)
+```json
+{
+  "id": 123,
+  "external_id": "507f1f77bcf86cd799439011",
+  "contact": "user@example.com",
+  "is_active": true,
+  "created_at": "2024-01-15T10:30:00Z",
+  "updated_at": "2024-01-16T09:15:00Z"
+}
+```
+
+**Error Response:** `404 Not Found`
+```json
+{
+  "detail": "User not found"
+}
+```
+
+### Get Current User
+**GET** `/api/v1/users/me`
+
+Get current user information from X-User-Id header. Auto-creates user if doesn't exist.
+
+**Headers Required:**
+```
+X-User-Id: 507f1f77bcf86cd799439011
+```
+
+**Response:** `200 OK`
+```json
+{
+  "id": 123,
+  "external_id": "507f1f77bcf86cd799439011", 
+  "contact": "user@example.com",
+  "is_active": true,
+  "created_at": "2024-01-15T10:30:00Z",
+  "updated_at": "2024-01-16T09:15:00Z"
+}
+```
+
 ---
 
 ## 📁 Folder Management Endpoints
