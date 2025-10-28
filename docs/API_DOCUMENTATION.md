@@ -25,6 +25,25 @@ X-User-Id: {user_internal_id}
 
 Users are auto-created if they don't exist with default free status.
 
+## ⚠️ Error Response Format
+
+All API errors return a standardized JSON response format:
+
+```json
+{
+  "error_code": "ERROR_CODE_NAME",
+  "message": "Human readable error message"
+}
+```
+
+**Common Error Codes:**
+- `USER_NOT_FOUND` - User does not exist (404)
+- `UNAUTHORIZED` - Missing or invalid X-User-Id header (401)
+- `VALIDATION_ERROR` - Invalid request data (422)
+- `SYSTEM_LIMIT_EXCEEDED` - Hard system limits exceeded (400)
+- `PLAN_LIMIT_EXCEEDED` - Plan limits exceeded, upgrade needed (400)
+- `INTERNAL_SERVER_ERROR` - Server error (500)
+
 ---
 
 ## 👤 User Management Endpoints
@@ -77,7 +96,8 @@ Check if a user is registered in the microservice by their external_id.
 **Error Response:** `404 Not Found`
 ```json
 {
-  "detail": "User not found"
+  "error_code": "USER_NOT_FOUND",
+  "message": "User not found"
 }
 ```
 
