@@ -1,3 +1,4 @@
+import time
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -22,13 +23,24 @@ def create_application() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # Middleware to extract user_id from headers
+    # Performance timing middleware
     @app.middleware("http")
-    async def add_user_context(request: Request, call_next):
+    async def add_process_time_header(request: Request, call_next):
+        start_time = time.time()
+        
         # Extract user_id from header sent by main server
         user_id = request.headers.get("X-User-Id") or request.headers.get("x-user-id")
         request.state.user_id = user_id
+        
         response = await call_next(request)
+        
+        process_time = time.time() - start_time
+        response.headers["X-Process-Time"] = str(process_time)
+        
+        # Log slow requests
+        if process_time > 1.0:  # Log requests taking more than 1 second
+            print(f"🐌 SLOW REQUEST: {request.method} {request.url} took {process_time:.3f}s")
+        
         return response
 
     # Include API router
@@ -46,5 +58,16 @@ async def root():
     return {"message": "FastAPI Microservice API", "service": "user-service"}
 
 @app.get("/health")
-async def health_check():
-    return {"status": "healthy", "service": "user-service"}
+def health_check():
+    return {"status": "healthy", "service": "vocabulary-service", "timestamp": time.time()}
+
+@app.get("/health/db")
+def health_check_db():
+    """Database health check to warm up connections"""
+    from app.config.database import engine
+    try:
+        with engine.connect() as connection:
+            result = connection.execute("SELECT 1").fetchone()
+            return {"status": "healthy", "database": "connected", "result": result[0]}
+    except Exception as e:
+        return {"status": "unhealthy", "database": "disconnected", "error": str(e)}
