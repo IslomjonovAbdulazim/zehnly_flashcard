@@ -19,15 +19,17 @@ def create_application() -> FastAPI:
     async def startup_event():
         try:
             from app.config.database import engine
+            from sqlalchemy import text
+            
             with engine.connect() as connection:
-                result = connection.execute("SELECT 1").fetchone()
+                result = connection.execute(text("SELECT 1")).fetchone()
                 print("✅ Database connection successful on startup")
                 
                 # Check if users table exists
-                tables_result = connection.execute("""
+                tables_result = connection.execute(text("""
                     SELECT table_name FROM information_schema.tables 
                     WHERE table_schema = 'public' AND table_name = 'users'
-                """).fetchone()
+                """)).fetchone()
                 
                 if tables_result:
                     print("✅ Database tables exist")
@@ -91,9 +93,10 @@ def health_check():
 def health_check_db():
     """Database health check to warm up connections"""
     from app.config.database import engine
+    from sqlalchemy import text
     try:
         with engine.connect() as connection:
-            result = connection.execute("SELECT 1").fetchone()
+            result = connection.execute(text("SELECT 1")).fetchone()
             return {"status": "healthy", "database": "connected", "result": result[0]}
     except Exception as e:
         return {"status": "unhealthy", "database": "disconnected", "error": str(e)}
