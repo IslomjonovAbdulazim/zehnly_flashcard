@@ -24,14 +24,6 @@ class CommonValidators:
         return v
 
     @staticmethod
-    def validate_username(v: str) -> str:
-        if not re.match(r'^[a-zA-Z0-9_-]+$', v):
-            raise ValueError("Username can only contain letters, numbers, underscores, and hyphens")
-        if len(v) < 3 or len(v) > 20:
-            raise ValueError("Username must be between 3 and 20 characters long")
-        return v
-
-    @staticmethod
     def validate_phone_number(v: str) -> str:
         pattern = r'^\+?1?\d{9,15}$'
         if not re.match(pattern, v):

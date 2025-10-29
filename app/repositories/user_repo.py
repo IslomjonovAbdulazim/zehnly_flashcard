@@ -14,9 +14,6 @@ class UserRepository(BaseRepository[User]):
     def get_by_contact(self, contact: str) -> Optional[User]:
         return self.db.query(User).filter(User.contact == contact).first()
 
-    def get_by_username(self, username: str) -> Optional[User]:
-        return self.db.query(User).filter(User.username == username).first()
-
     def get_active_users(self, skip: int = 0, limit: int = 100):
         return self.db.query(User).filter(User.is_active == True).offset(skip).limit(limit).all()
 

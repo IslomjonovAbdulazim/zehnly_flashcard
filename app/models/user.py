@@ -10,9 +10,6 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     external_id = Column(String, unique=True, index=True, nullable=False)  # MongoDB ObjectId from main server
     contact = Column(String, unique=True, index=True, nullable=True)  # Phone number or email
-    username = Column(String, nullable=True)
-    first_name = Column(String, nullable=True)
-    last_name = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())

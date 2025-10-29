@@ -184,7 +184,9 @@ Retrieve all folders accessible to the user (owned + followed).
       "created_at": "2024-01-15T10:30:00Z",
       "updated_at": null,
       "word_count": 15,
-      "has_share_code": true
+      "has_share_code": true,
+      "share_code": "AB123",
+      "share_expires_at": "2024-01-17T10:30:00Z"
     }
   ],
   "followed_folders": [
