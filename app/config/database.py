@@ -6,6 +6,11 @@ from app.config.settings import settings
 
 engine = create_engine(
     settings.DATABASE_URL,
+    pool_size=20,
+    max_overflow=30,
+    pool_timeout=30,
+    pool_recycle=3600,
+    pool_pre_ping=True,
     connect_args={"check_same_thread": False} if "sqlite" in settings.DATABASE_URL else {}
 )
 

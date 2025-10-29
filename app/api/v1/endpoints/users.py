@@ -51,12 +51,12 @@ async def register_user(
         }
 
 @router.get("/check/{external_id}", response_model=UserResponse)
-async def check_user_registered(
+def check_user_registered(
     external_id: str,
     user_service: UserService = Depends(get_user_service)
 ):
     """Check if user is registered by external_id"""
-    user = await user_service.get_user_by_external_id(external_id)
+    user = user_service.get_user_by_external_id(external_id)
     if not user:
         raise APIException(
             status_code=404,

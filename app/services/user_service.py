@@ -24,7 +24,7 @@ class UserService:
         user_dict = user_data.dict()
         return self.user_repo.create_user(user_dict)
 
-    async def get_user_by_external_id(self, external_id: str) -> Optional[User]:
+    def get_user_by_external_id(self, external_id: str) -> Optional[User]:
         return self.user_repo.get_by_external_id(external_id)
 
     async def get_or_create_user(self, external_id: str, user_data: dict = None) -> User:
