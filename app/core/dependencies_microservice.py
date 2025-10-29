@@ -24,27 +24,37 @@ def get_current_user(
     db: Session = Depends(get_db)
 ) -> User:
     """Get user from database using external_id from headers"""
-    external_id = get_user_id_from_request(request)
-    
-    # Check if user is already cached in request state
-    if hasattr(request.state, 'current_user'):
-        return request.state.current_user
-    
-    # Query database directly - removed Redis caching to avoid serialization overhead
-    user_repo = UserRepository(db)
-    user = user_repo.get_by_external_id(external_id)
-    
-    if not user:
-        # Create user if not exists (first time from main server)
-        user_data = {
-            "external_id": external_id,
-            "is_active": True
-        }
-        user = user_repo.create_user(user_data)
-    
-    # Cache user in request state to avoid multiple DB calls
-    request.state.current_user = user
-    return user
+    try:
+        external_id = get_user_id_from_request(request)
+        
+        # Check if user is already cached in request state
+        if hasattr(request.state, 'current_user'):
+            return request.state.current_user
+        
+        # Query database directly - removed Redis caching to avoid serialization overhead
+        user_repo = UserRepository(db)
+        user = user_repo.get_by_external_id(external_id)
+        
+        if not user:
+            # Create user if not exists (first time from main server)
+            user_data = {
+                "external_id": external_id,
+                "is_active": True
+            }
+            user = user_repo.create_user(user_data)
+        
+        # Cache user in request state to avoid multiple DB calls
+        request.state.current_user = user
+        return user
+        
+    except Exception as e:
+        print(f"❌ Error in get_current_user: {str(e)}")
+        print(f"   External ID: {external_id if 'external_id' in locals() else 'unknown'}")
+        raise APIException(
+            status_code=500,
+            error_code=ErrorCode.INTERNAL_SERVER_ERROR,
+            detail=f"Database error: {str(e)}"
+        )
 
 def get_optional_user(
     request: Request,

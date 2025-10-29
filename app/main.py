@@ -13,6 +13,30 @@ def create_application() -> FastAPI:
         description=settings.DESCRIPTION + " - Microservice",
         openapi_url=f"{settings.API_V1_STR}/openapi.json"
     )
+    
+    # Add startup event to check database connection
+    @app.on_event("startup")
+    async def startup_event():
+        try:
+            from app.config.database import engine
+            with engine.connect() as connection:
+                result = connection.execute("SELECT 1").fetchone()
+                print("✅ Database connection successful on startup")
+                
+                # Check if users table exists
+                tables_result = connection.execute("""
+                    SELECT table_name FROM information_schema.tables 
+                    WHERE table_schema = 'public' AND table_name = 'users'
+                """).fetchone()
+                
+                if tables_result:
+                    print("✅ Database tables exist")
+                else:
+                    print("⚠️  Warning: 'users' table not found - may need migration")
+                    
+        except Exception as e:
+            print(f"❌ Database startup check failed: {str(e)}")
+            # Don't fail startup, just log the error
 
     # Set up CORS middleware
     app.add_middleware(
@@ -37,9 +61,11 @@ def create_application() -> FastAPI:
         process_time = time.time() - start_time
         response.headers["X-Process-Time"] = str(process_time)
         
-        # Log slow requests
+        # Log request timing
         if process_time > 1.0:  # Log requests taking more than 1 second
             print(f"🐌 SLOW REQUEST: {request.method} {request.url} took {process_time:.3f}s")
+        else:
+            print(f"✅ REQUEST: {request.method} {request.url} took {process_time:.3f}s")
         
         return response
 
