@@ -16,12 +16,9 @@ engine = create_engine(
     pool_pre_ping=True,       # Validate connections
     echo=settings.DEBUG,      # Enable SQL logging in debug mode
     connect_args={
-        "check_same_thread": False,
         "connect_timeout": 10,     # 10 second connection timeout
-        "server_settings": {
-            "application_name": "zehnly_vocab_service"
-        }
-    } if "sqlite" not in settings.DATABASE_URL else {"check_same_thread": False}
+        "application_name": "zehnly_vocab_service"
+    } if "postgresql" in settings.DATABASE_URL else {}
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

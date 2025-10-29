@@ -24,27 +24,31 @@ def main():
         print("   For better production performance, install gunicorn:")
         print("   pip install gunicorn")
     
-    # Production command
+    # Railway-optimized single worker for better database connection handling
+    port = os.environ.get("PORT", "8000")
+    
     if use_gunicorn:
         cmd = [
             "gunicorn", 
             "app.main:app", 
-            "-w", "4",
+            "-w", "1",  # Single worker for Railway
             "-k", "uvicorn.workers.UvicornWorker",
-            "--bind", "0.0.0.0:8000",
+            "--bind", f"0.0.0.0:{port}",
+            "--timeout", "30",
             "--access-logfile", "-",
             "--error-logfile", "-"
         ]
-        print("🚀 Starting with Gunicorn (4 workers)...")
+        print("🚀 Starting with Gunicorn (1 worker - Railway optimized)...")
     else:
         cmd = [
             "uvicorn", 
             "app.main:app", 
             "--host", "0.0.0.0", 
-            "--port", "8000", 
-            "--workers", "4"
+            "--port", port, 
+            "--workers", "1",  # Single worker for Railway
+            "--timeout-keep-alive", "30"
         ]
-        print("🚀 Starting with Uvicorn (4 workers)...")
+        print("🚀 Starting with Uvicorn (1 worker - Railway optimized)...")
     
     print("🌐 Server will be available at: http://0.0.0.0:8000")
     print("📖 API docs will be available at: http://0.0.0.0:8000/docs")
