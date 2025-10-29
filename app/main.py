@@ -18,23 +18,15 @@ def create_application() -> FastAPI:
     @app.on_event("startup")
     async def startup_event():
         try:
-            from app.config.database import engine
-            from sqlalchemy import text
+            from app.config.database import SessionLocal
+            from app.models.user import User
             
-            with engine.connect() as connection:
-                result = connection.execute(text("SELECT 1")).fetchone()
-                print("✅ Database connection successful on startup")
-                
-                # Check if users table exists
-                tables_result = connection.execute(text("""
-                    SELECT table_name FROM information_schema.tables 
-                    WHERE table_schema = 'public' AND table_name = 'users'
-                """)).fetchone()
-                
-                if tables_result:
-                    print("✅ Database tables exist")
-                else:
-                    print("⚠️  Warning: 'users' table not found - may need migration")
+            # Use ORM instead of raw SQL for compatibility
+            with SessionLocal() as db:
+                # Simple query to test connection
+                user_count = db.query(User).count()
+                print(f"✅ Database connection successful - {user_count} users in database")
+                print("✅ Database tables exist and accessible")
                     
         except Exception as e:
             print(f"❌ Database startup check failed: {str(e)}")
@@ -92,11 +84,11 @@ def health_check():
 @app.get("/health/db")
 def health_check_db():
     """Database health check to warm up connections"""
-    from app.config.database import engine
-    from sqlalchemy import text
+    from app.config.database import SessionLocal
+    from app.models.user import User
     try:
-        with engine.connect() as connection:
-            result = connection.execute(text("SELECT 1")).fetchone()
-            return {"status": "healthy", "database": "connected", "result": result[0]}
+        with SessionLocal() as db:
+            user_count = db.query(User).count()
+            return {"status": "healthy", "database": "connected", "user_count": user_count}
     except Exception as e:
         return {"status": "unhealthy", "database": "disconnected", "error": str(e)}
