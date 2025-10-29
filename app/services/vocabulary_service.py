@@ -284,27 +284,16 @@ class VocabularyService:
     def get_user_folders(self, user_id: int) -> Dict:
         """Get all folders for user (owned + followed)"""
         
-        # Try cache first
-        cache_key = f"user_folders:{user_id}"
-        cached_folders = cache_service.get(cache_key)
-        if cached_folders:
-            return cached_folders
-        
         # Get owned folders
         owned_folders = self.folder_repo.get_by_user_id(user_id)
         
         # Get followed folders with JOIN to avoid N+1 queries
         followed_folders = self.follower_repo.get_user_followed_folders_with_details(user_id)
 
-        result = {
+        return {
             "owned_folders": owned_folders,
             "followed_folders": followed_folders
         }
-        
-        # Cache for 2 minutes (shorter TTL since folders can change)
-        cache_service.set(cache_key, result, ttl=120)
-        
-        return result
 
     async def _get_accessible_folder(self, user_id: int, folder_id: int) -> VocabularyFolder:
         """Get folder if user has access (owns or follows)"""

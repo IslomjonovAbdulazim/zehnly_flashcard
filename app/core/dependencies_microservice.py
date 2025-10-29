@@ -30,20 +30,7 @@ def get_current_user(
     if hasattr(request.state, 'current_user'):
         return request.state.current_user
     
-    # Try Redis cache first
-    cache_key = f"user:{external_id}"
-    cached_user_data = cache_service.get(cache_key)
-    
-    if cached_user_data:
-        # Reconstruct User object from cached data
-        user = User()
-        for key, value in cached_user_data.items():
-            if hasattr(user, key):
-                setattr(user, key, value)
-        request.state.current_user = user
-        return user
-    
-    # Not in cache, query database
+    # Query database directly - removed Redis caching to avoid serialization overhead
     user_repo = UserRepository(db)
     user = user_repo.get_by_external_id(external_id)
     
@@ -54,17 +41,6 @@ def get_current_user(
             "is_active": True
         }
         user = user_repo.create_user(user_data)
-    
-    # Cache user data in Redis (5 minute TTL)
-    user_data_for_cache = {
-        "id": user.id,
-        "external_id": user.external_id,
-        "contact": user.contact,
-        "is_active": user.is_active,
-        "created_at": user.created_at.isoformat() if user.created_at else None,
-        "updated_at": user.updated_at.isoformat() if user.updated_at else None
-    }
-    cache_service.set(cache_key, user_data_for_cache, ttl=300)
     
     # Cache user in request state to avoid multiple DB calls
     request.state.current_user = user
