@@ -1,4 +1,3 @@
-import time
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -13,24 +12,6 @@ def create_application() -> FastAPI:
         description=settings.DESCRIPTION + " - Microservice",
         openapi_url=f"{settings.API_V1_STR}/openapi.json"
     )
-    
-    # Add startup event to check database connection
-    @app.on_event("startup")
-    async def startup_event():
-        try:
-            from app.config.database import SessionLocal
-            from app.models.user import User
-            
-            # Use ORM instead of raw SQL for compatibility
-            with SessionLocal() as db:
-                # Simple query to test connection
-                user_count = db.query(User).count()
-                print(f"✅ Database connection successful - {user_count} users in database")
-                print("✅ Database tables exist and accessible")
-                    
-        except Exception as e:
-            print(f"❌ Database startup check failed: {str(e)}")
-            # Don't fail startup, just log the error
 
     # Set up CORS middleware
     app.add_middleware(
@@ -41,26 +22,12 @@ def create_application() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # Performance timing middleware
+    # Simple middleware to extract user_id from headers
     @app.middleware("http")
-    async def add_process_time_header(request: Request, call_next):
-        start_time = time.time()
-        
-        # Extract user_id from header sent by main server
+    async def add_user_context(request: Request, call_next):
         user_id = request.headers.get("X-User-Id") or request.headers.get("x-user-id")
         request.state.user_id = user_id
-        
         response = await call_next(request)
-        
-        process_time = time.time() - start_time
-        response.headers["X-Process-Time"] = str(process_time)
-        
-        # Log request timing
-        if process_time > 1.0:  # Log requests taking more than 1 second
-            print(f"🐌 SLOW REQUEST: {request.method} {request.url} took {process_time:.3f}s")
-        else:
-            print(f"✅ REQUEST: {request.method} {request.url} took {process_time:.3f}s")
-        
         return response
 
     # Include API router
@@ -74,21 +41,9 @@ def create_application() -> FastAPI:
 app = create_application()
 
 @app.get("/")
-async def root():
-    return {"message": "FastAPI Microservice API", "service": "user-service"}
+def root():
+    return {"message": "FastAPI Microservice API", "service": "vocabulary-service"}
 
 @app.get("/health")
 def health_check():
-    return {"status": "healthy", "service": "vocabulary-service", "timestamp": time.time()}
-
-@app.get("/health/db")
-def health_check_db():
-    """Database health check to warm up connections"""
-    from app.config.database import SessionLocal
-    from app.models.user import User
-    try:
-        with SessionLocal() as db:
-            user_count = db.query(User).count()
-            return {"status": "healthy", "database": "connected", "user_count": user_count}
-    except Exception as e:
-        return {"status": "unhealthy", "database": "disconnected", "error": str(e)}
+    return {"status": "healthy"}
