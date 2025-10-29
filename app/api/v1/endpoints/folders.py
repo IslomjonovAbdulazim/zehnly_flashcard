@@ -37,12 +37,12 @@ async def create_vocabulary_folder(
     return folder
 
 @router.get("/", response_model=FolderListResponse)
-async def get_user_folders(
+def get_user_folders(
     current_user: User = Depends(get_current_user),
     vocabulary_service: VocabularyService = Depends(get_vocabulary_service)
 ):
     """Get all folders for current user (owned + followed)"""
-    return await vocabulary_service.get_user_folders(current_user.id)
+    return vocabulary_service.get_user_folders(current_user.id)
 
 @router.get("/{folder_id}", response_model=VocabularyFolderResponse)
 async def get_folder(

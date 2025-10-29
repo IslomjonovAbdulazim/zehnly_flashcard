@@ -112,3 +112,18 @@ class FolderFollowerRepository(BaseRepository[FolderFollower]):
     
     def get_by_user_and_folder(self, user_id: int, folder_id: int) -> Optional[FolderFollower]:
         return self.get_follower(user_id, folder_id)
+    
+    def get_user_followed_folders_with_details(self, user_id: int) -> List[dict]:
+        """Get followed folders with details in a single query to avoid N+1"""
+        results = (self.db.query(FolderFollower, VocabularyFolder)
+                  .join(VocabularyFolder, FolderFollower.folder_id == VocabularyFolder.id)
+                  .filter(FolderFollower.user_id == user_id, 
+                         FolderFollower.is_active == True,
+                         VocabularyFolder.is_active == True)
+                  .all())
+        
+        return [{
+            "folder": folder,
+            "joined_at": relation.joined_at,
+            "joined_via_code": relation.joined_via_code
+        } for relation, folder in results]

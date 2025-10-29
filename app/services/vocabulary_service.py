@@ -17,6 +17,7 @@ from app.services.cloud_storage import cloud_storage
 from app.services.share_code_cleanup import share_cleanup
 from app.models.vocabulary import VocabularyWord, FolderShareCode, FolderFollower
 from app.models.folder import VocabularyFolder
+from app.services.cache_service import cache_service
 
 class VocabularyService:
     def __init__(
@@ -280,29 +281,30 @@ class VocabularyService:
         if follower_record:
             self.follower_repo.delete(follower_record.id)
 
-    async def get_user_folders(self, user_id: int) -> Dict:
+    def get_user_folders(self, user_id: int) -> Dict:
         """Get all folders for user (owned + followed)"""
+        
+        # Try cache first
+        cache_key = f"user_folders:{user_id}"
+        cached_folders = cache_service.get(cache_key)
+        if cached_folders:
+            return cached_folders
         
         # Get owned folders
         owned_folders = self.folder_repo.get_by_user_id(user_id)
         
-        # Get followed folders
-        followed_relations = self.follower_repo.get_by_user_id(user_id)
-        followed_folders = []
-        
-        for relation in followed_relations:
-            folder = self.folder_repo.get_by_id(relation.folder_id)
-            if folder and folder.is_active:
-                followed_folders.append({
-                    "folder": folder,
-                    "joined_at": relation.joined_at,
-                    "joined_via_code": relation.joined_via_code
-                })
+        # Get followed folders with JOIN to avoid N+1 queries
+        followed_folders = self.follower_repo.get_user_followed_folders_with_details(user_id)
 
-        return {
+        result = {
             "owned_folders": owned_folders,
             "followed_folders": followed_folders
         }
+        
+        # Cache for 2 minutes (shorter TTL since folders can change)
+        cache_service.set(cache_key, result, ttl=120)
+        
+        return result
 
     async def _get_accessible_folder(self, user_id: int, folder_id: int) -> VocabularyFolder:
         """Get folder if user has access (owns or follows)"""

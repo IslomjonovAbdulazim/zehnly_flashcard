@@ -6,6 +6,7 @@ from app.core.exceptions import APIException
 from app.core.error_codes import ErrorCode
 from app.repositories.user_repo import UserRepository
 from app.models.user import User
+from app.services.cache_service import cache_service
 
 def get_user_id_from_request(request: Request) -> str:
     """Extract user_id from request headers (set by main server)"""
@@ -25,6 +26,24 @@ def get_current_user(
     """Get user from database using external_id from headers"""
     external_id = get_user_id_from_request(request)
     
+    # Check if user is already cached in request state
+    if hasattr(request.state, 'current_user'):
+        return request.state.current_user
+    
+    # Try Redis cache first
+    cache_key = f"user:{external_id}"
+    cached_user_data = cache_service.get(cache_key)
+    
+    if cached_user_data:
+        # Reconstruct User object from cached data
+        user = User()
+        for key, value in cached_user_data.items():
+            if hasattr(user, key):
+                setattr(user, key, value)
+        request.state.current_user = user
+        return user
+    
+    # Not in cache, query database
     user_repo = UserRepository(db)
     user = user_repo.get_by_external_id(external_id)
     
@@ -36,6 +55,19 @@ def get_current_user(
         }
         user = user_repo.create_user(user_data)
     
+    # Cache user data in Redis (5 minute TTL)
+    user_data_for_cache = {
+        "id": user.id,
+        "external_id": user.external_id,
+        "contact": user.contact,
+        "is_active": user.is_active,
+        "created_at": user.created_at.isoformat() if user.created_at else None,
+        "updated_at": user.updated_at.isoformat() if user.updated_at else None
+    }
+    cache_service.set(cache_key, user_data_for_cache, ttl=300)
+    
+    # Cache user in request state to avoid multiple DB calls
+    request.state.current_user = user
     return user
 
 def get_optional_user(
