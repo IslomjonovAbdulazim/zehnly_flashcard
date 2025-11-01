@@ -97,27 +97,8 @@ class VocabularyService:
 
         translated_word = translation_result["translated_text"]
         
-        # Generate audio for the translated word
-        audio_url = None
-        audio_path = None
-        
-        try:
-            # Check if audio already exists
-            audio_path = cloud_storage.generate_audio_path(translated_word, folder.target_language)
-            
-            if not cloud_storage.file_exists(audio_path):
-                # Generate new audio
-                audio_data = await tts_service.generate_audio(translated_word, folder.target_language)
-                audio_path, audio_url = cloud_storage.upload_audio_file(
-                    audio_data, translated_word, folder.target_language
-                )
-            else:
-                # Use existing audio
-                audio_url = cloud_storage.get_public_url(audio_path)
-                
-        except Exception as e:
-            # Don't fail if audio generation fails, just log it
-            print(f"Audio generation failed for '{translated_word}': {str(e)}")
+        # Generate audio for the translated word - ensure we always have audio
+        audio_url, audio_path = await self._ensure_audio_for_word(translated_word, folder.target_language)
 
         # Create vocabulary word record
         word_data = {
@@ -143,18 +124,53 @@ class VocabularyService:
         
         return self.folder_repo.create(folder_data)
 
+    async def _ensure_audio_for_word(self, word: str, target_language: str) -> tuple[str, str]:
+        """Ensure audio exists for a word, generate if needed. Returns (audio_url, audio_path)"""
+        try:
+            # Check if audio already exists
+            audio_path = cloud_storage.generate_audio_path(word, target_language)
+            
+            if cloud_storage.file_exists(audio_path):
+                # Use existing audio
+                audio_url = cloud_storage.get_public_url(audio_path)
+                return audio_url, audio_path
+            
+            # Generate new audio
+            audio_data = await tts_service.generate_audio(word, target_language)
+            audio_path, audio_url = cloud_storage.upload_audio_file(
+                audio_data, word, target_language
+            )
+            return audio_url, audio_path
+            
+        except Exception as e:
+            print(f"Audio generation failed for '{word}': {str(e)}")
+            return None, None
+
     async def get_folder_words(self, user_id: int, folder_id: int) -> Dict:
-        """Get all words in a folder"""
+        """Get all words in a folder, ensuring all have audio"""
         
         # Verify access
         folder = await self._get_accessible_folder(user_id, folder_id)
         
         words = self.word_repo.get_by_folder_id(folder_id)
-        total = len(words)
+        
+        # Ensure all words have audio URLs
+        updated_words = []
+        for word in words:
+            if not word.audio_url:
+                # Generate audio for words that don't have it
+                audio_url, audio_path = await self._ensure_audio_for_word(
+                    word.translated_word, word.target_language
+                )
+                if audio_url:
+                    # Update the word in database
+                    update_data = {"audio_url": audio_url, "audio_path": audio_path}
+                    word = self.word_repo.update(word, update_data)
+            updated_words.append(word)
         
         return {
-            "words": words,
-            "total": total,
+            "words": updated_words,
+            "total": len(updated_words),
             "folder": folder
         }
 
