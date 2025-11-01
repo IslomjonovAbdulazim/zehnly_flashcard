@@ -22,7 +22,7 @@ async def register_user(
     user_service: UserService = Depends(get_user_service)
 ):
     """Register new user or update existing user information"""
-    existing_user = await user_service.get_user_by_external_id(user_data.external_id)
+    existing_user = user_service.get_user_by_external_id(user_data.external_id)
     
     if existing_user:
         # Update existing user
