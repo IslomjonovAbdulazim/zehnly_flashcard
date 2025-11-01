@@ -20,7 +20,7 @@ class VocabularyWordResponse(VocabularyWordBase):
     updated_at: Optional[datetime] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class VocabularyWordListResponse(BaseModel):
     words: List[VocabularyWordResponse]
