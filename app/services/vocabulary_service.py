@@ -298,13 +298,21 @@ class VocabularyService:
             self.follower_repo.delete(follower_record.id)
 
     def get_user_folders(self, user_id: int) -> Dict:
-        """Get all folders for user (owned + followed)"""
+        """Get all folders for user (owned + followed) with word counts"""
         
         # Get owned folders
         owned_folders = self.folder_repo.get_by_user_id(user_id)
         
+        # Add word count to each owned folder
+        for folder in owned_folders:
+            folder.word_count = self.word_repo.count_folder_words(folder.id)
+        
         # Get followed folders with JOIN to avoid N+1 queries
         followed_folders = self.follower_repo.get_user_followed_folders_with_details(user_id)
+        
+        # Add word count to each followed folder
+        for folder_data in followed_folders:
+            folder_data["folder"].word_count = self.word_repo.count_folder_words(folder_data["folder"].id)
 
         return {
             "owned_folders": owned_folders,
