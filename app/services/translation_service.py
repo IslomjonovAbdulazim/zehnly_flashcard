@@ -10,6 +10,18 @@ class GoogleTranslationService:
     def __init__(self):
         self.client = self._get_client()
         self.supported_languages = {lang["code"]: lang["name"] for lang in SUPPORTED_LANGUAGES}
+        # Frontend to Google Translate language code mapping
+        self.frontend_to_google_mapping = {
+            "gb": "en",  # Great Britain -> English
+            "jp": "ja",  # Japan -> Japanese
+            "kr": "ko",  # Korea -> Korean
+            "cn": "zh",  # China -> Chinese
+            "sa": "ar",  # Saudi Arabia -> Arabic
+            "in": "hi",  # India -> Hindi (or could be 'en' for English)
+            # Direct mappings (same codes)
+            "es": "es", "fr": "fr", "de": "de", "it": "it", 
+            "pt": "pt", "ru": "ru", "tr": "tr", "pl": "pl", "nl": "nl"
+        }
 
     def _get_client(self) -> translate.Client:
         """Initialize Google Translate client with service account credentials"""
@@ -28,6 +40,10 @@ class GoogleTranslationService:
         
         credentials = service_account.Credentials.from_service_account_info(credentials_info)
         return translate.Client(credentials=credentials)
+
+    def _normalize_language_code(self, language_code: str) -> str:
+        """Convert frontend language codes to Google Translate codes"""
+        return self.frontend_to_google_mapping.get(language_code, language_code)
 
     async def detect_language(self, text: str) -> Optional[str]:
         """
@@ -57,15 +73,19 @@ class GoogleTranslationService:
         }
         """
         try:
+            # Normalize language codes for Google Translate
+            normalized_target = self._normalize_language_code(target_language)
+            normalized_source = self._normalize_language_code(source_language) if source_language else None
+            
             # If source language not provided, detect it
-            if not source_language:
-                source_language = await self.detect_language(text)
+            if not normalized_source:
+                normalized_source = await self.detect_language(text)
             
             # Perform translation
             result = self.client.translate(
                 text,
-                target_language=target_language,
-                source_language=source_language
+                target_language=normalized_target,
+                source_language=normalized_source
             )
             
             return {

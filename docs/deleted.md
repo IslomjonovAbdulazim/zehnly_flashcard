@@ -17,5 +17,4 @@
 | `tr` | Turkish | Filiz |
 | `pl` | Polish | Maja |
 | `nl` | Dutch | Lotte |
-
 ---

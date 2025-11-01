@@ -8,14 +8,33 @@ class NarakeetTTSService:
     def __init__(self):
         self.api_key = settings.NARAKEET
         self.base_url = "https://api.narakeet.com"
+        # Frontend to standard language code mapping
+        self.frontend_to_standard_mapping = {
+            "gb": "en",  # Great Britain -> English
+            "jp": "ja",  # Japan -> Japanese
+            "kr": "ko",  # Korea -> Korean
+            "cn": "zh",  # China -> Chinese
+            "sa": "ar",  # Saudi Arabia -> Arabic
+            "in": "hi",  # India -> Hindi
+            # Direct mappings (same codes)
+            "es": "es", "fr": "fr", "de": "de", "it": "it", 
+            "pt": "pt", "ru": "ru", "tr": "tr", "pl": "pl", "nl": "nl"
+        }
+
+    def _normalize_language_code(self, language_code: str) -> str:
+        """Convert frontend language codes to standard codes"""
+        return self.frontend_to_standard_mapping.get(language_code, language_code)
         
     async def generate_audio(self, text: str, language: str, voice: Optional[str] = None, speed: float = TTS_SPEED) -> bytes:
         """
         Generate audio using Narakeet TTS API
         Returns: audio data as bytes
         """
+        # Normalize language code
+        normalized_language = self._normalize_language_code(language)
+        
         if not voice:
-            voice = DEFAULT_VOICES.get(language, "Betty")  # Default to English Betty if language not found
+            voice = DEFAULT_VOICES.get(normalized_language, "Betty")  # Default to English Betty if language not found
         
         url = f"{self.base_url}/text-to-speech/mp3"
         
@@ -52,11 +71,13 @@ class NarakeetTTSService:
 
     async def is_language_supported(self, language: str) -> bool:
         """Check if language is supported by checking if we have a default voice for it"""
-        return language in DEFAULT_VOICES
+        normalized_language = self._normalize_language_code(language)
+        return normalized_language in DEFAULT_VOICES
 
     def get_voice_for_language(self, language: str) -> str:
         """Get the default voice for a language"""
-        return DEFAULT_VOICES.get(language, "Betty")
+        normalized_language = self._normalize_language_code(language)
+        return DEFAULT_VOICES.get(normalized_language, "Betty")
 
 # Global instance
 tts_service = NarakeetTTSService()
