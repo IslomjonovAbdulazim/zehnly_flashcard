@@ -34,6 +34,8 @@ async def create_vocabulary_folder(
     is_premium = folder_dict.pop("is_premium", False)
     
     folder = await vocabulary_service.create_folder(current_user.id, folder_dict, is_premium)
+    # New folders start with 0 words
+    folder.word_count = 0
     return folder
 
 @router.get("/", response_model=FolderListResponse)
@@ -52,6 +54,8 @@ async def get_folder(
 ):
     """Get specific folder"""
     folder = await vocabulary_service._get_accessible_folder(current_user.id, folder_id)
+    # Add word count
+    folder.word_count = vocabulary_service.word_repo.count_folder_words(folder_id)
     return folder
 
 @router.put("/{folder_id}", response_model=VocabularyFolderResponse)
