@@ -94,6 +94,14 @@ class GoogleTranslationService:
             # If source language not provided, detect it
             if not normalized_source:
                 normalized_source = await self.detect_language(text)
+                
+            # If source and target are the same, no translation needed
+            if normalized_source == normalized_target:
+                return {
+                    "translated_text": text,  # Return original text
+                    "detected_language": normalized_source,
+                    "confidence": 1.0
+                }
             
             # Perform translation
             result = self.client.translate(
