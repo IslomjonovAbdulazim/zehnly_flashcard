@@ -42,8 +42,22 @@ class GoogleTranslationService:
         return translate.Client(credentials=credentials)
 
     def _normalize_language_code(self, language_code: str) -> str:
-        """Convert frontend language codes to Google Translate codes"""
-        return self.frontend_to_google_mapping.get(language_code, language_code)
+        """Convert frontend language codes to Google Translate codes with fallback to English"""
+        if not language_code or not isinstance(language_code, str):
+            return "en"  # Fallback to English
+            
+        # Clean the language code (remove any weird characters)
+        clean_code = language_code.lower().strip()
+        
+        # Map frontend codes to Google codes
+        normalized = self.frontend_to_google_mapping.get(clean_code, clean_code)
+        
+        # Validate the normalized code exists in our supported languages
+        if normalized in self.supported_languages:
+            return normalized
+            
+        # If invalid, fallback to English
+        return "en"
 
     async def detect_language(self, text: str) -> Optional[str]:
         """

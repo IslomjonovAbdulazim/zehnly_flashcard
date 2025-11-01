@@ -22,8 +22,22 @@ class NarakeetTTSService:
         }
 
     def _normalize_language_code(self, language_code: str) -> str:
-        """Convert frontend language codes to standard codes"""
-        return self.frontend_to_standard_mapping.get(language_code, language_code)
+        """Convert frontend language codes to standard codes with fallback to English"""
+        if not language_code or not isinstance(language_code, str):
+            return "en"  # Fallback to English
+            
+        # Clean the language code (remove any weird characters)
+        clean_code = language_code.lower().strip()
+        
+        # Map frontend codes to standard codes
+        normalized = self.frontend_to_standard_mapping.get(clean_code, clean_code)
+        
+        # Validate the normalized code exists in our voice mapping
+        if normalized in DEFAULT_VOICES:
+            return normalized
+            
+        # If invalid, fallback to English
+        return "en"
         
     async def generate_audio(self, text: str, language: str, voice: Optional[str] = None, speed: float = TTS_SPEED) -> bytes:
         """
