@@ -2,4 +2,23 @@
 builder = "nixpacks"
 
 [build.nixpacksConfig]
-aptPkgs = ["libgomp1", "libgl1-mesa-glx", "libglib2.0-0", "libsm6", "libxext6", "libxrender-dev", "libfontconfig1"]
+aptPkgs = [
+  "libgomp1", 
+  "libgl1-mesa-glx", 
+  "libgl1-mesa-dev",
+  "libglib2.0-0", 
+  "libsm6", 
+  "libxext6", 
+  "libxrender-dev", 
+  "libfontconfig1",
+  "libglu1-mesa",
+  "libxrandr2",
+  "libxss1",
+  "libxcursor1",
+  "libxcomposite1",
+  "libxdamage1",
+  "libxfixes3",
+  "libxi6",
+  "libxtst6",
+  "libasound2"
+]
