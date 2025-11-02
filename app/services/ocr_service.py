@@ -15,19 +15,17 @@ class OCRService:
     def __init__(self):
         self.ocr = PaddleOCR(use_angle_cls=True, lang='en')
         
-    async def extract_words_from_image(self, image_data: bytes) -> Dict[str, Any]:
+    async def extract_words_from_image(self, image_data: bytes) -> List[str]:
         """
-        Extract words from image using PaddleOCR with detailed metadata
+        Extract words from image using PaddleOCR
         
         Args:
             image_data: Raw image bytes
             
         Returns:
-            Dictionary with words, confidence scores, and timing data
+            List of words extracted from image
         """
         try:
-            start_time = time.time()
-            
             # Convert bytes to PIL Image
             image = Image.open(io.BytesIO(image_data))
             
@@ -36,58 +34,31 @@ class OCRService:
                 image = image.convert('RGB')
             
             # Run OCR
-            ocr_start = time.time()
             result = self.ocr.ocr(image, cls=True)
-            ocr_time = time.time() - ocr_start
             
             # Extract words from result
             words = []
-            word_details = []
-            confidences = []
-            
             if result and result[0]:
                 for line in result[0]:
                     text = line[1][0]  # Get the text part
                     confidence = line[1][1]  # Get confidence score
-                    bbox = line[0]  # Bounding box coordinates
                     
                     # Only include words with decent confidence
-                    if confidence > 0.3:
+                    if confidence > 0.5:
                         # Split text into individual words and clean them
                         text_words = self._extract_clean_words(text)
-                        
-                        for word in text_words:
-                            words.append(word)
-                            confidences.append(confidence)
-                            word_details.append({
-                                "word": word,
-                                "confidence": round(confidence, 3),
-                                "bbox": bbox
-                            })
+                        words.extend(text_words)
             
             # Remove duplicates while preserving order
             unique_words = list(dict.fromkeys(words))
             
-            total_time = time.time() - start_time
-            
-            return {
-                "words": unique_words,
-                "word_details": word_details,
-                "total_words": len(words),
-                "unique_words": len(unique_words),
-                "average_confidence": round(sum(confidences) / len(confidences), 3) if confidences else 0,
-                "timing": {
-                    "total_time_ms": round(total_time * 1000, 2),
-                    "ocr_time_ms": round(ocr_time * 1000, 2),
-                    "processing_time_ms": round((total_time - ocr_time) * 1000, 2)
-                }
-            }
+            return unique_words
             
         except Exception as e:
             logger.error(f"OCR extraction failed: {str(e)}")
             raise HTTPException(status_code=500, detail=f"OCR processing failed: {str(e)}")
     
-    async def extract_words_from_base64(self, base64_image: str) -> Dict[str, Any]:
+    async def extract_words_from_base64(self, base64_image: str) -> List[str]:
         """
         Extract words from base64 encoded image
         
@@ -95,7 +66,7 @@ class OCRService:
             base64_image: Base64 encoded image string
             
         Returns:
-            Dictionary with words, confidence scores, and timing data
+            List of words extracted from image
         """
         try:
             # Remove data URL prefix if present
