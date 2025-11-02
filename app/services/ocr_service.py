@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 class OCRService:
     def __init__(self):
-        self.ocr = PaddleOCR(use_angle_cls=True, lang='en', use_space_char=True)
+        self.ocr = PaddleOCR(use_angle_cls=True, lang='en')
         
     async def extract_words_from_image(self, image_data: bytes) -> List[str]:
         """
@@ -33,8 +33,12 @@ class OCRService:
             if image.mode != 'RGB':
                 image = image.convert('RGB')
             
+            # Convert PIL image to numpy array for PaddleOCR
+            import numpy as np
+            image_array = np.array(image)
+            
             # Run OCR
-            result = self.ocr.ocr(image)
+            result = self.ocr.ocr(image_array)
             
             # Extract words from result
             words = []
