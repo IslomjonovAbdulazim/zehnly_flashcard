@@ -3,22 +3,29 @@ builder = "nixpacks"
 
 [build.nixpacksConfig]
 aptPkgs = [
-  "libgomp1", 
+  "libgomp1",
   "libgl1-mesa-glx", 
   "libgl1-mesa-dev",
-  "libglib2.0-0", 
-  "libsm6", 
+  "libgl1-mesa-dri",
+  "libglib2.0-0",
+  "libsm6",
   "libxext6", 
-  "libxrender-dev", 
+  "libxrender-dev",
   "libfontconfig1",
   "libglu1-mesa",
   "libxrandr2",
   "libxss1",
   "libxcursor1",
-  "libxcomposite1",
+  "libxcomposite1", 
   "libxdamage1",
   "libxfixes3",
   "libxi6",
   "libxtst6",
-  "libasound2"
+  "libasound2",
+  "xvfb",
+  "mesa-utils"
 ]
+
+[build.nixpacksConfig.env]
+DISPLAY = ":99"
+XVFB_WHD = "1920x1080x24"

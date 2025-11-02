@@ -25,7 +25,13 @@ class OCRService:
             self.ocr = None
         else:
             try:
-                self.ocr = PaddleOCR(use_angle_cls=True, lang='en')
+                # Initialize PaddleOCR with CPU-only and minimal dependencies
+                self.ocr = PaddleOCR(
+                    use_angle_cls=True, 
+                    lang='en',
+                    use_gpu=False,  # Force CPU mode
+                    show_log=False  # Reduce logging
+                )
                 print("✅ OCR service initialized successfully")
             except Exception as e:
                 print(f"❌ Failed to initialize OCR: {e}")
