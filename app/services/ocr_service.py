@@ -40,18 +40,35 @@ class OCRService:
             # Run OCR
             result = self.ocr.ocr(image_array)
             
-            # Extract words from result
+            # Extract words from result - handle new PaddleOCR format
             words = []
-            if result and result[0]:
-                for line in result[0]:
-                    text = line[1][0]  # Get the text part
-                    confidence = line[1][1]  # Get confidence score
+            if result and len(result) > 0:
+                result_data = result[0]
+                if isinstance(result_data, dict) and 'rec_texts' in result_data and 'rec_scores' in result_data:
+                    # New format with rec_texts and rec_scores
+                    rec_texts = result_data['rec_texts']
+                    rec_scores = result_data['rec_scores']
                     
-                    # Only include words with decent confidence
-                    if confidence > 0.5:
-                        # Split text into individual words and clean them
-                        text_words = self._extract_clean_words(text)
-                        words.extend(text_words)
+                    for i, text in enumerate(rec_texts):
+                        confidence = rec_scores[i] if i < len(rec_scores) else 0.0
+                        
+                        # Only include words with decent confidence
+                        if confidence > 0.3:
+                            # Split text into individual words and clean them
+                            text_words = self._extract_clean_words(text)
+                            words.extend(text_words)
+                else:
+                    # Old format - fallback
+                    for line in result_data:
+                        if isinstance(line, list) and len(line) >= 2:
+                            text = line[1][0]  # Get the text part
+                            confidence = line[1][1]  # Get confidence score
+                            
+                            # Only include words with decent confidence
+                            if confidence > 0.3:
+                                # Split text into individual words and clean them
+                                text_words = self._extract_clean_words(text)
+                                words.extend(text_words)
             
             # Remove duplicates while preserving order
             unique_words = list(dict.fromkeys(words))
@@ -91,8 +108,8 @@ class OCRService:
         if not text:
             return []
         
-        # Remove special characters but keep letters, numbers, and basic punctuation
-        cleaned_text = re.sub(r'[^\w\s\'-]', ' ', text)
+        # Remove ALL punctuation and special characters, keep only letters and spaces
+        cleaned_text = re.sub(r'[^a-zA-Z\s]', ' ', text)
         
         # Split into words
         words = cleaned_text.split()
@@ -100,13 +117,13 @@ class OCRService:
         # Filter words
         clean_words = []
         for word in words:
-            word = word.strip("'-")  # Remove leading/trailing quotes and hyphens
+            word = word.strip().lower()
             
             # Keep words that:
             # - Are at least 2 characters
-            # - Contain at least one letter
-            if len(word) >= 2 and any(c.isalpha() for c in word):
-                clean_words.append(word.lower())
+            # - Contain only letters
+            if len(word) >= 2 and word.isalpha():
+                clean_words.append(word)
         
         return clean_words
 

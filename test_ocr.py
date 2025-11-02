@@ -11,7 +11,7 @@ from pathlib import Path
 async def test_ocr_with_image():
     """Test OCR service with the test image"""
     
-    image_path = "tests/img.png"
+    image_path = "tests/img_1.png"
     
     if not os.path.exists(image_path):
         print(f"❌ Image not found: {image_path}")
