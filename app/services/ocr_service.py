@@ -3,17 +3,33 @@ import base64
 import time
 from typing import List, Dict, Any
 from PIL import Image
-from paddleocr import PaddleOCR
 from fastapi import HTTPException
 import logging
 import re
+
+# Optional OCR import to prevent server crash when dependencies are missing
+try:
+    from paddleocr import PaddleOCR
+    PADDLE_OCR_AVAILABLE = True
+except ImportError as e:
+    print(f"⚠️  PaddleOCR not available: {e}")
+    PADDLE_OCR_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
 
 class OCRService:
     def __init__(self):
-        self.ocr = PaddleOCR(use_angle_cls=True, lang='en')
+        if not PADDLE_OCR_AVAILABLE:
+            print("⚠️  OCR service disabled - PaddleOCR dependencies not available")
+            self.ocr = None
+        else:
+            try:
+                self.ocr = PaddleOCR(use_angle_cls=True, lang='en')
+                print("✅ OCR service initialized successfully")
+            except Exception as e:
+                print(f"❌ Failed to initialize OCR: {e}")
+                self.ocr = None
         
     async def extract_words_from_image(self, image_data: bytes) -> List[str]:
         """
@@ -25,6 +41,12 @@ class OCRService:
         Returns:
             List of words extracted from image
         """
+        if self.ocr is None:
+            raise HTTPException(
+                status_code=503, 
+                detail="OCR service unavailable - missing system dependencies. Please contact support."
+            )
+            
         try:
             # Convert bytes to PIL Image
             image = Image.open(io.BytesIO(image_data))
@@ -89,6 +111,12 @@ class OCRService:
         Returns:
             List of words extracted from image
         """
+        if self.ocr is None:
+            raise HTTPException(
+                status_code=503, 
+                detail="OCR service unavailable - missing system dependencies. Please contact support."
+            )
+            
         try:
             # Remove data URL prefix if present
             if base64_image.startswith('data:image'):
