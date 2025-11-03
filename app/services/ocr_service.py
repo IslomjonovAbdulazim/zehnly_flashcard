@@ -2,44 +2,45 @@ import io
 import base64
 import time
 from typing import List, Dict, Any
-from PIL import Image
 from fastapi import HTTPException
 import logging
 import re
+import os
 
-# Optional OCR import to prevent server crash when dependencies are missing
+# OpenAI Vision API import
 try:
-    from paddleocr import PaddleOCR
-    PADDLE_OCR_AVAILABLE = True
+    from openai import OpenAI
+    OCR_AVAILABLE = True
 except ImportError as e:
-    print(f"⚠️  PaddleOCR not available: {e}")
-    PADDLE_OCR_AVAILABLE = False
+    print(f"⚠️  OpenAI not available: {e}")
+    OCR_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
 
 class OCRService:
     def __init__(self):
-        if not PADDLE_OCR_AVAILABLE:
-            print("⚠️  OCR service disabled - PaddleOCR dependencies not available")
-            self.ocr = None
+        if not OCR_AVAILABLE:
+            print("⚠️  OCR service disabled - OpenAI not available")
+            self.client = None
         else:
             try:
-                # Initialize PaddleOCR with CPU-only and minimal dependencies
-                self.ocr = PaddleOCR(
-                    use_angle_cls=True, 
-                    lang='en',
-                    use_gpu=False,  # Force CPU mode
-                    show_log=False  # Reduce logging
-                )
-                print("✅ OCR service initialized successfully")
+                # Initialize OpenAI client with API key from environment
+                api_key = os.getenv("OPENAI_API_KEY")
+                if not api_key:
+                    print("❌ OPENAI_API_KEY not found in environment variables")
+                    self.client = None
+                    return
+                    
+                self.client = OpenAI(api_key=api_key)
+                print("✅ OCR service initialized successfully with OpenAI Vision API")
             except Exception as e:
                 print(f"❌ Failed to initialize OCR: {e}")
-                self.ocr = None
+                self.client = None
         
     async def extract_words_from_image(self, image_data: bytes) -> List[str]:
         """
-        Extract words from image using PaddleOCR
+        Extract words from image using OpenAI Vision API
         
         Args:
             image_data: Raw image bytes
@@ -47,56 +48,44 @@ class OCRService:
         Returns:
             List of words extracted from image
         """
-        if self.ocr is None:
+        if self.client is None:
             raise HTTPException(
                 status_code=503, 
-                detail="OCR service unavailable - missing system dependencies. Please contact support."
+                detail="OCR service unavailable - OpenAI API not initialized. Please contact support."
             )
             
         try:
-            # Convert bytes to PIL Image
-            image = Image.open(io.BytesIO(image_data))
+            # Convert bytes to base64 for OpenAI API
+            image_base64 = base64.b64encode(image_data).decode('utf-8')
             
-            # Convert to RGB if needed
-            if image.mode != 'RGB':
-                image = image.convert('RGB')
+            # Call OpenAI Vision API
+            response = self.client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": "Extract all text from this image. Return only the words separated by spaces, no formatting or explanations."
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:image/jpeg;base64,{image_base64}"
+                                }
+                            }
+                        ]
+                    }
+                ],
+                max_tokens=1000
+            )
             
-            # Convert PIL image to numpy array for PaddleOCR
-            import numpy as np
-            image_array = np.array(image)
+            # Extract text from response
+            extracted_text = response.choices[0].message.content.strip()
             
-            # Run OCR
-            result = self.ocr.ocr(image_array)
-            
-            # Extract words from result - handle new PaddleOCR format
-            words = []
-            if result and len(result) > 0:
-                result_data = result[0]
-                if isinstance(result_data, dict) and 'rec_texts' in result_data and 'rec_scores' in result_data:
-                    # New format with rec_texts and rec_scores
-                    rec_texts = result_data['rec_texts']
-                    rec_scores = result_data['rec_scores']
-                    
-                    for i, text in enumerate(rec_texts):
-                        confidence = rec_scores[i] if i < len(rec_scores) else 0.0
-                        
-                        # Only include words with decent confidence
-                        if confidence > 0.3:
-                            # Split text into individual words and clean them
-                            text_words = self._extract_clean_words(text)
-                            words.extend(text_words)
-                else:
-                    # Old format - fallback
-                    for line in result_data:
-                        if isinstance(line, list) and len(line) >= 2:
-                            text = line[1][0]  # Get the text part
-                            confidence = line[1][1]  # Get confidence score
-                            
-                            # Only include words with decent confidence
-                            if confidence > 0.3:
-                                # Split text into individual words and clean them
-                                text_words = self._extract_clean_words(text)
-                                words.extend(text_words)
+            # Split into words and clean them
+            words = self._extract_clean_words(extracted_text)
             
             # Remove duplicates while preserving order
             unique_words = list(dict.fromkeys(words))
@@ -117,10 +106,10 @@ class OCRService:
         Returns:
             List of words extracted from image
         """
-        if self.ocr is None:
+        if self.client is None:
             raise HTTPException(
                 status_code=503, 
-                detail="OCR service unavailable - missing system dependencies. Please contact support."
+                detail="OCR service unavailable - OpenAI API not initialized. Please contact support."
             )
             
         try:
