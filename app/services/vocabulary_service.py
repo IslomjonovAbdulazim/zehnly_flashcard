@@ -76,11 +76,8 @@ class VocabularyService:
             folder_id, original_word, folder.target_language
         )
         if existing_word:
-            raise APIException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                error_code=ErrorCode.DUPLICATE_OPERATION,
-                detail="Word already exists in this folder"
-            )
+            # Return existing word instead of throwing error
+            return existing_word
 
         # Detect source language and translate
         try:
