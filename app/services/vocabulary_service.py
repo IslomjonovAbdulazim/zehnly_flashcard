@@ -82,6 +82,9 @@ class VocabularyService:
         # Detect source language and translate
         try:
             detected_lang = await translation_service.detect_language(original_word)
+            # Default to English if detection fails or returns null
+            if not detected_lang:
+                detected_lang = "en"
             translation_result = await translation_service.translate_text(
                 original_word, folder.target_language, detected_lang
             )
