@@ -102,8 +102,12 @@ class VocabularyService:
             if not detected_lang:
                 detected_lang = "en"
             
+            # Debug logging
+            print(f"🔍 DEBUG: word='{validated_word}', detected='{detected_lang}', folder_target='{folder.target_language}'")
+            
             # Check if detected language matches folder's target language
             if detected_lang == folder.target_language:
+                print(f"📝 Same language detected - translating '{validated_word}' to Uzbek")
                 # Same language case: translate to Uzbek and reverse the storage
                 uzbek_translation = await translation_service.translate_text(
                     validated_word, "uz", detected_lang  # Translate to Uzbek
@@ -112,7 +116,9 @@ class VocabularyService:
                 final_original_word = uzbek_translation["translated_text"]
                 final_translated_word = validated_word
                 final_original_language = "uz"
+                print(f"✅ Uzbek translation: '{final_original_word}'")
             else:
+                print(f"🔄 Different language - normal translation")
                 # Different language case: normal translation
                 translation_result = await translation_service.translate_text(
                     validated_word, folder.target_language, detected_lang
