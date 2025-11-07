@@ -103,33 +103,49 @@ class VocabularyService:
             # Return existing word instead of throwing error
             return existing_word
 
-        # Step 2: Detect source language and translate (using Google Translate)
+        # Step 2: Detect source language and handle translation (using Google Translate)
         try:
             detected_lang = await translation_service.detect_language(validated_word)
             # Default to English if detection fails or returns null
             if not detected_lang:
                 detected_lang = "en"
-            translation_result = await translation_service.translate_text(
-                validated_word, folder.target_language, detected_lang
-            )
+            
+            # Check if detected language matches folder's target language
+            if detected_lang == folder.target_language:
+                # Same language case: translate to Uzbek and reverse the storage
+                uzbek_translation = await translation_service.translate_text(
+                    validated_word, "uz", detected_lang  # Translate to Uzbek
+                )
+                # Store Uzbek as original, target language word as translated
+                final_original_word = uzbek_translation["translated_text"]
+                final_translated_word = validated_word
+                final_original_language = "uz"
+            else:
+                # Different language case: normal translation
+                translation_result = await translation_service.translate_text(
+                    validated_word, folder.target_language, detected_lang
+                )
+                # Store as normal
+                final_original_word = validated_word
+                final_translated_word = translation_result["translated_text"] 
+                final_original_language = detected_lang
+                
         except Exception as e:
             raise APIException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 error_code=ErrorCode.INTERNAL_SERVER_ERROR,
                 detail=f"Translation failed: {str(e)}"
             )
-
-        translated_word = translation_result["translated_text"]
         
         # Generate audio for the translated word - ensure we always have audio
-        audio_url, audio_path = await self._ensure_audio_for_word(translated_word, folder.target_language)
+        audio_url, audio_path = await self._ensure_audio_for_word(final_translated_word, folder.target_language)
 
         # Create vocabulary word record
         word_data = {
             "folder_id": folder_id,
-            "original_word": validated_word,  # Use validated/corrected word
-            "original_language": detected_lang,
-            "translated_word": translated_word,
+            "original_word": final_original_word,  # Either validated word or Uzbek translation
+            "original_language": final_original_language,  # Either detected lang or "uz"
+            "translated_word": final_translated_word,  # Either translation or validated word
             "target_language": folder.target_language,
             "audio_url": audio_url,
             "audio_path": audio_path

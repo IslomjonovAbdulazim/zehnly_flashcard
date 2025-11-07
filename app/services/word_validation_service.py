@@ -107,16 +107,19 @@ class WordValidationService:
         return f"""
 Extract and correct a single meaningful word from this input: "{word}"
 
-IMPORTANT: 90% of users are UZBEK speakers. Assume input is likely UZBEK language first.
+IMPORTANT: 90% of users are UZBEK speakers. Be smart about language detection and correction.
 
 Rules:
 1. PRIORITIZE UZBEK: If input looks like it could be Uzbek, treat it as valid Uzbek word
-2. Common Uzbek words: kitob (book), uy (house), salom (hello), ona (mother), ota (father), bola (child), etc.
-3. If it's a sentence, extract the MOST IMPORTANT single word
-4. If it has typos in Uzbek, fix to correct Uzbek spelling
-5. If it has numbers/symbols, remove them but keep the Uzbek word
-6. Only if clearly NOT Uzbek and looks like gibberish, provide a random vocabulary word
-7. NEVER change valid Uzbek words to English equivalents
+2. ALSO CORRECT OTHER LANGUAGES: Fix typos in Russian, English, Spanish, etc.
+3. Common corrections:
+   - Uzbek: kitob, uy, salom, ona, ota, bola, dost, maktab, ish
+   - Russian: книга→kniga, дом→dom, привет→privet, мама→mama  
+   - English: bookk→book, houes→house, frend→friend
+4. If it's a sentence, extract the MOST IMPORTANT single word
+5. If it has numbers/symbols, remove them but keep the corrected word
+6. Only if clearly gibberish, provide a random vocabulary word
+7. NEVER change valid words to different languages (kitob stays kitob, not book)
 
 Respond in JSON format:
 {{
@@ -127,9 +130,10 @@ Respond in JSON format:
 }}
 
 Examples:
-- "kitob" → {{"is_valid": true, "corrected_word": "kitob", "confidence": 0.9, "suggestion": "Valid Uzbek word for book"}}
-- "salom" → {{"is_valid": true, "corrected_word": "salom", "confidence": 0.9, "suggestion": "Valid Uzbek word for hello"}}
-- "men onamni yaxshi ko'raman" → {{"is_valid": true, "corrected_word": "ona", "confidence": 0.8, "suggestion": "Extracted 'ona' (mother) from Uzbek sentence"}}
+- "kitob" → {{"is_valid": true, "corrected_word": "kitob", "confidence": 0.9, "suggestion": "Valid Uzbek word"}}
+- "kniga" → {{"is_valid": true, "corrected_word": "книга", "confidence": 0.9, "suggestion": "Fixed Russian spelling"}}
+- "bookk" → {{"is_valid": true, "corrected_word": "book", "confidence": 0.9, "suggestion": "Fixed English typo"}}
+- "men onamni yaxshi ko'raman" → {{"is_valid": true, "corrected_word": "ona", "confidence": 0.8, "suggestion": "Extracted 'ona' from Uzbek sentence"}}
 - "book 2" → {{"is_valid": true, "corrected_word": "book", "confidence": 0.9, "suggestion": "Removed number"}}
 - "kitobb" → {{"is_valid": true, "corrected_word": "kitob", "confidence": 0.8, "suggestion": "Fixed Uzbek typo"}}
 - "fnweoibfpiwqbfuyiwqepbf" → {{"is_valid": true, "corrected_word": "dost", "confidence": 0.5, "suggestion": "Random Uzbek word for practice"}}
