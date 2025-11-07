@@ -131,8 +131,9 @@ class OCRService:
         if not text:
             return []
         
-        # Remove ALL punctuation and special characters, keep only letters and spaces
-        cleaned_text = re.sub(r'[^a-zA-Z\s]', ' ', text)
+        # Remove punctuation but keep ALL language characters (Unicode letters)
+        # Keep: Latin, Cyrillic, Arabic, Chinese, Japanese, Korean, etc.
+        cleaned_text = re.sub(r'[^\w\s]', ' ', text, flags=re.UNICODE)
         
         # Split into words
         words = cleaned_text.split()
@@ -140,12 +141,13 @@ class OCRService:
         # Filter words
         clean_words = []
         for word in words:
-            word = word.strip().lower()
+            word = word.strip()
             
             # Keep words that:
             # - Are at least 2 characters
-            # - Contain only letters
-            if len(word) >= 2 and word.isalpha():
+            # - Contain letters from any language (not just English)
+            # - Are not pure numbers
+            if len(word) >= 2 and not word.isdigit() and any(c.isalpha() for c in word):
                 clean_words.append(word)
         
         return clean_words
