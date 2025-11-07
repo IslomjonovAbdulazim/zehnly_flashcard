@@ -95,14 +95,6 @@ class VocabularyService:
                 print(f"Word validation failed, continuing with original word: {str(e)}")
                 validated_word = original_word
         
-        # Check if word already exists in folder (using validated word)
-        existing_word = self.word_repo.get_by_original_word(
-            folder_id, validated_word, folder.target_language
-        )
-        if existing_word:
-            # Return existing word instead of throwing error
-            return existing_word
-
         # Step 2: Detect source language and handle translation (using Google Translate)
         try:
             detected_lang = await translation_service.detect_language(validated_word)
@@ -136,6 +128,14 @@ class VocabularyService:
                 error_code=ErrorCode.INTERNAL_SERVER_ERROR,
                 detail=f"Translation failed: {str(e)}"
             )
+        
+        # Check if word already exists in folder (using final original word)
+        existing_word = self.word_repo.get_by_original_word(
+            folder_id, final_original_word, folder.target_language
+        )
+        if existing_word:
+            # Return existing word instead of throwing error
+            return existing_word
         
         # Generate audio for the translated word - ensure we always have audio
         audio_url, audio_path = await self._ensure_audio_for_word(final_translated_word, folder.target_language)

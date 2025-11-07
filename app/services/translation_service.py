@@ -19,8 +19,9 @@ class GoogleTranslationService:
             "sa": "ar",  # Saudi Arabia -> Arabic
             "in": "hi",  # India -> Hindi (or could be 'en' for English)
             # Direct mappings (same codes)
-            "es": "es", "fr": "fr", "de": "de", "it": "it", 
-            "pt": "pt", "ru": "ru", "tr": "tr", "pl": "pl", "nl": "nl"
+            "en": "en", "es": "es", "fr": "fr", "de": "de", "it": "it", 
+            "pt": "pt", "ru": "ru", "tr": "tr", "pl": "pl", "nl": "nl",
+            "uz": "uz"  # Uzbek mapping
         }
 
     def _get_client(self) -> translate.Client:
