@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     
     # External APIs
     NARAKEET: Optional[str] = None
+    OPENAI_API_KEY: Optional[str] = None
     
     # Google Cloud
     GOOGLE_CLOUD_PROJECT: Optional[str] = None

@@ -4,7 +4,7 @@ from fastapi import status
 
 from app.core.exceptions import APIException
 from app.core.error_codes import ErrorCode
-from app.core.constants import SHARE_CODE_DURATIONS, MAX_WORDS_PER_FOLDER, MAX_FOLDERS_SYSTEM, MAX_FOLDERS_FREE, MAX_FOLDERS_PREMIUM
+from app.core.constants import SHARE_CODE_DURATIONS, MAX_WORDS_PER_FOLDER, MAX_FOLDERS_SYSTEM, MAX_FOLDERS_FREE, MAX_FOLDERS_PREMIUM, WORD_VALIDATION_ENABLED, WORD_VALIDATION_MIN_CONFIDENCE
 from app.repositories.vocabulary_repo import (
     VocabularyWordRepository, 
     VocabularyFolderRepository,
@@ -15,6 +15,7 @@ from app.services.translation_service import translation_service
 from app.services.tts_service import tts_service
 from app.services.cloud_storage import cloud_storage
 from app.services.share_code_cleanup import share_cleanup
+from app.services.word_validation_service import word_validation_service
 from app.models.vocabulary import VocabularyWord, FolderShareCode, FolderFollower
 from app.models.folder import VocabularyFolder
 from app.services.cache_service import cache_service
@@ -71,22 +72,50 @@ class VocabularyService:
                 detail=f"System word limit ({MAX_WORDS_PER_FOLDER}) exceeded for this folder"
             )
         
-        # Check if word already exists in folder
+        # Step 1: Validate and correct the word using AI (if enabled)
+        validated_word = original_word
+        validation_suggestion = None
+        
+        if WORD_VALIDATION_ENABLED:
+            try:
+                validation_result = await word_validation_service.validate_and_correct_word(original_word)
+                
+                # Check if word is valid enough
+                if not validation_result["is_valid"] or validation_result["confidence"] < WORD_VALIDATION_MIN_CONFIDENCE:
+                    raise APIException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        error_code=ErrorCode.BAD_REQUEST,
+                        detail=f"Invalid word: '{original_word}'. {validation_result.get('suggestion', 'Please enter a valid word.')}"
+                    )
+                
+                # Use corrected word if available
+                validated_word = validation_result["corrected_word"]
+                validation_suggestion = validation_result.get("suggestion")
+                
+            except APIException:
+                # Re-raise API exceptions (invalid word)
+                raise
+            except Exception as e:
+                # For other errors, log and continue with original word
+                print(f"Word validation failed, continuing with original word: {str(e)}")
+                validated_word = original_word
+        
+        # Check if word already exists in folder (using validated word)
         existing_word = self.word_repo.get_by_original_word(
-            folder_id, original_word, folder.target_language
+            folder_id, validated_word, folder.target_language
         )
         if existing_word:
             # Return existing word instead of throwing error
             return existing_word
 
-        # Detect source language and translate
+        # Step 2: Detect source language and translate (using Google Translate)
         try:
-            detected_lang = await translation_service.detect_language(original_word)
+            detected_lang = await translation_service.detect_language(validated_word)
             # Default to English if detection fails or returns null
             if not detected_lang:
                 detected_lang = "en"
             translation_result = await translation_service.translate_text(
-                original_word, folder.target_language, detected_lang
+                validated_word, folder.target_language, detected_lang
             )
         except Exception as e:
             raise APIException(
@@ -103,7 +132,7 @@ class VocabularyService:
         # Create vocabulary word record
         word_data = {
             "folder_id": folder_id,
-            "original_word": original_word,
+            "original_word": validated_word,  # Use validated/corrected word
             "original_language": detected_lang,
             "translated_word": translated_word,
             "target_language": folder.target_language,

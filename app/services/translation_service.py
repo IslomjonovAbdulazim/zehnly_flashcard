@@ -68,10 +68,8 @@ class GoogleTranslationService:
             result = self.client.detect_language(text)
             detected_lang = result['language']
             
-            # Only return if it's one of our supported languages
-            if detected_lang in self.supported_languages:
-                return detected_lang
-            return None
+            # Return any language detected by Google Translate (not restricted to our 15 supported languages)
+            return detected_lang
             
         except Exception as e:
             print(f"Language detection error: {str(e)}")
