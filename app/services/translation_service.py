@@ -85,32 +85,36 @@ class GoogleTranslationService:
         }
         """
         try:
-            # Normalize language codes for Google Translate
+            # Normalize target language code for Google Translate
             normalized_target = self._normalize_language_code(target_language)
-            normalized_source = self._normalize_language_code(source_language) if source_language else None
             
             # If source language not provided, detect it
-            if not normalized_source:
-                normalized_source = await self.detect_language(text)
+            detected_source = source_language
+            if not detected_source:
+                detected_source = await self.detect_language(text)
+            
+            # Don't normalize source language - keep original detected language (like "uz" for Uzbek)
+            # This allows Google Translate to work with 100+ languages including Uzbek
                 
             # If source and target are the same, no translation needed
-            if normalized_source == normalized_target:
+            if detected_source == normalized_target:
                 return {
                     "translated_text": text,  # Return original text
-                    "detected_language": normalized_source,
+                    "detected_language": detected_source,
                     "confidence": 1.0
                 }
             
-            # Perform translation
+            # Perform direct translation from detected language to target
+            # Don't go through English - translate directly (e.g., Uzbek → Russian)
             result = self.client.translate(
                 text,
                 target_language=normalized_target,
-                source_language=normalized_source
+                source_language=detected_source  # Use raw detected language (uz, hy, etc.)
             )
             
             return {
                 "translated_text": result['translatedText'],
-                "detected_language": result.get('detectedSourceLanguage', source_language),
+                "detected_language": detected_source,  # Keep original detected language
                 "confidence": 0.95  # Google Translate doesn't provide confidence scores
             }
             
