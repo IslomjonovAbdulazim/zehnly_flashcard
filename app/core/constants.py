@@ -65,6 +65,6 @@ MAX_FOLDERS_FREE = 2       # Plan limit for free users
 MAX_FOLDERS_PREMIUM = 50   # Plan limit for premium users (same as system limit)
 
 # Word validation settings
-WORD_VALIDATION_ENABLED = False  # Enable/disable AI word validation (temporarily disabled for debugging)
+WORD_VALIDATION_ENABLED = True  # Enable/disable AI word validation
 WORD_VALIDATION_MIN_CONFIDENCE = 0.3  # Minimum confidence to accept validation (lowered for non-English words)
 MAX_WORD_LENGTH = 50  # Maximum allowed word length

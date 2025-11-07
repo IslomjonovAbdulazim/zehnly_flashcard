@@ -105,31 +105,32 @@ class WordValidationService:
     def _create_validation_prompt(self, word: str) -> str:
         """Create prompt for OpenAI validation"""
         return f"""
-Check if this word is valid and correct any typos: "{word}"
+Extract and correct a single meaningful word from this input: "{word}"
 
 Rules:
-1. If it's a valid word in ANY language (including Arabic, Cyrillic, Asian scripts, Uzbek, etc.), mark as valid with high confidence
-2. Be very lenient with non-Latin scripts and foreign languages
-3. Only mark as invalid if it's clearly random gibberish with no linguistic pattern
-4. If it contains numbers or punctuation, clean them but keep the word valid
-5. Don't try to "correct" foreign language words to English
+1. If it's a sentence, extract the MOST IMPORTANT/RELEVANT single word
+2. If it's gibberish, provide a random but relevant vocabulary word
+3. If it has typos, fix them
+4. If it has numbers/symbols, remove them
+5. ALWAYS return a single word - never reject or mark as invalid
+6. Be creative and helpful - even for nonsense input, give a useful word
 
 Respond in JSON format:
 {{
-    "is_valid": true/false,
-    "corrected_word": "corrected version or original",
+    "is_valid": true,
+    "corrected_word": "single extracted/corrected word",
     "confidence": 0.0-1.0,
-    "suggestion": "explanation if corrected or null"
+    "suggestion": "explanation of what you did"
 }}
 
 Examples:
+- "men onamni yaxshi ko'raman" → {{"is_valid": true, "corrected_word": "ona", "confidence": 0.8, "suggestion": "Extracted 'ona' (mother) from Uzbek sentence"}}
+- "I love my beautiful house" → {{"is_valid": true, "corrected_word": "house", "confidence": 0.9, "suggestion": "Extracted key noun from sentence"}}
+- "book 2" → {{"is_valid": true, "corrected_word": "book", "confidence": 0.9, "suggestion": "Removed number"}}
 - "bookk" → {{"is_valid": true, "corrected_word": "book", "confidence": 0.9, "suggestion": "Fixed typo"}}
-- "book 2" → {{"is_valid": true, "corrected_word": "book", "confidence": 0.8, "suggestion": "Removed number"}}
-- "سلام" → {{"is_valid": true, "corrected_word": "سلام", "confidence": 0.9, "suggestion": null}}
-- "привет" → {{"is_valid": true, "corrected_word": "привет", "confidence": 0.9, "suggestion": null}}
-- "salom" → {{"is_valid": true, "corrected_word": "salom", "confidence": 0.9, "suggestion": null}}
-- "xyzabc123random" → {{"is_valid": false, "corrected_word": "xyzabc123random", "confidence": 0.1, "suggestion": "Not a valid word"}}
-- "hello" → {{"is_valid": true, "corrected_word": "hello", "confidence": 1.0, "suggestion": null}}
+- "fnweoibfpiwqbfuyiwqepbf" → {{"is_valid": true, "corrected_word": "friend", "confidence": 0.5, "suggestion": "Random vocabulary word for practice"}}
+- "xyzabc123" → {{"is_valid": true, "corrected_word": "learn", "confidence": 0.5, "suggestion": "Random vocabulary word for practice"}}
+- "hello" → {{"is_valid": true, "corrected_word": "hello", "confidence": 1.0, "suggestion": "Perfect single word"}}
 """
     
     def _parse_openai_response(self, response_text: str) -> Dict:

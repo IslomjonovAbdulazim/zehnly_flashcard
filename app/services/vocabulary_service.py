@@ -80,13 +80,8 @@ class VocabularyService:
             try:
                 validation_result = await word_validation_service.validate_and_correct_word(original_word)
                 
-                # Check if word is valid enough
-                if not validation_result["is_valid"] or validation_result["confidence"] < WORD_VALIDATION_MIN_CONFIDENCE:
-                    raise APIException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        error_code=ErrorCode.BAD_REQUEST,
-                        detail=f"Invalid word: '{original_word}'. {validation_result.get('suggestion', 'Please enter a valid word.')}"
-                    )
+                # AI now always returns valid=true and provides a useful word
+                # No need to reject anymore - AI will extract/correct anything into a useful word
                 
                 # Use corrected word if available
                 validated_word = validation_result["corrected_word"]
