@@ -108,10 +108,11 @@ class WordValidationService:
 Check if this word is valid and correct any typos: "{word}"
 
 Rules:
-1. If it's a valid word in any language, mark as valid
-2. If it's a typo, provide the corrected spelling
-3. If it's nonsense or gibberish, mark as invalid
-4. If it contains multiple words, keep the main word only
+1. If it's a valid word in ANY language (including Arabic, Cyrillic, Asian scripts, Uzbek, etc.), mark as valid with high confidence
+2. Be very lenient with non-Latin scripts and foreign languages
+3. Only mark as invalid if it's clearly random gibberish with no linguistic pattern
+4. If it contains numbers or punctuation, clean them but keep the word valid
+5. Don't try to "correct" foreign language words to English
 
 Respond in JSON format:
 {{
@@ -124,7 +125,10 @@ Respond in JSON format:
 Examples:
 - "bookk" → {{"is_valid": true, "corrected_word": "book", "confidence": 0.9, "suggestion": "Fixed typo"}}
 - "book 2" → {{"is_valid": true, "corrected_word": "book", "confidence": 0.8, "suggestion": "Removed number"}}
-- "xyzabc123" → {{"is_valid": false, "corrected_word": "xyzabc123", "confidence": 0.1, "suggestion": "Not a valid word"}}
+- "سلام" → {{"is_valid": true, "corrected_word": "سلام", "confidence": 0.9, "suggestion": null}}
+- "привет" → {{"is_valid": true, "corrected_word": "привет", "confidence": 0.9, "suggestion": null}}
+- "salom" → {{"is_valid": true, "corrected_word": "salom", "confidence": 0.9, "suggestion": null}}
+- "xyzabc123random" → {{"is_valid": false, "corrected_word": "xyzabc123random", "confidence": 0.1, "suggestion": "Not a valid word"}}
 - "hello" → {{"is_valid": true, "corrected_word": "hello", "confidence": 1.0, "suggestion": null}}
 """
     
