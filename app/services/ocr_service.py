@@ -67,7 +67,7 @@ class OCRService:
                         "content": [
                             {
                                 "type": "text",
-                                "text": "Extract all text from this image. Return only the words separated by spaces, no formatting or explanations."
+                                "text": "Extract ALL text from this image. The text may be in any language including Russian (Cyrillic), Arabic, Chinese, Japanese, Korean, or other scripts. Preserve ALL original characters exactly as they appear. Return only the words separated by spaces. Do not translate, transliterate, or modify the characters. Keep the original script (Latin, Cyrillic, Arabic, Chinese, etc.)."
                             },
                             {
                                 "type": "image_url",
@@ -78,7 +78,7 @@ class OCRService:
                         ]
                     }
                 ],
-                max_tokens=1000
+                max_tokens=2000
             )
             
             # Extract text from response
