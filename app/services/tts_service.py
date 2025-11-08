@@ -47,6 +47,10 @@ class NarakeetTTSService:
         # Normalize language code
         normalized_language = self._normalize_language_code(language)
         
+        # Use slower speed for Chinese
+        if normalized_language == "zh":
+            speed = 0.6
+        
         if not voice:
             voice = DEFAULT_VOICES.get(normalized_language, "Betty")  # Default to English Betty if language not found
         
