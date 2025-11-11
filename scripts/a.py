@@ -3,7 +3,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from reportlab.platypus import Image
 import os
-
+e
 # Create output directory if it doesn't exist
 output_dir = "output"
 os.makedirs(output_dir, exist_ok=True)

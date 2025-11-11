@@ -11,6 +11,7 @@ class VocabularyFolder(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     title = Column(String, nullable=False)
     target_language = Column(String, nullable=False)  # Language user wants to learn
+    native_language = Column(String, nullable=False, default="uz")  # User's native language
     is_active = Column(Boolean, default=True)
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
