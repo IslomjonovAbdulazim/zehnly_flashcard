@@ -18,7 +18,7 @@ class NarakeetTTSService:
             "in": "hi",  # India -> Hindi
             # Direct mappings (same codes)
             "es": "es", "fr": "fr", "de": "de", "it": "it", 
-            "pt": "pt", "ru": "ru", "tr": "tr", "pl": "pl", "nl": "nl"
+            "pt": "pt", "ru": "ru", "tr": "tr", "pl": "pl", "nl": "nl", "uz": "uz"
         }
 
     def _normalize_language_code(self, language_code: str) -> str:
