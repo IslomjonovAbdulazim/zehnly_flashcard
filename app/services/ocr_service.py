@@ -67,7 +67,7 @@ class OCRService:
                         "content": [
                             {
                                 "type": "text",
-                                "text": "Extract ALL text from this image. The text may be in any language including Russian (Cyrillic), Arabic, Chinese, Japanese, Korean, or other scripts. Preserve ALL original characters exactly as they appear. Return only the words separated by spaces. Do not translate, transliterate, or modify the characters. Keep the original script (Latin, Cyrillic, Arabic, Chinese, etc.)."
+                                "text": "Extract the TOP 9 MOST RELEVANT words from this image. The text may be in any language including Russian (Cyrillic), Arabic, Chinese, Japanese, Korean, or other scripts. IMPORTANT: Return MAXIMUM 9 words only. Pick the most important/relevant words. If you cannot see any text or the image is unclear, return ONLY the word 'NOTEXT'. Otherwise, return only the extracted words separated by spaces. Preserve ALL original characters exactly as they appear. Do not translate, transliterate, or modify the characters."
                             },
                             {
                                 "type": "image_url",
@@ -84,13 +84,18 @@ class OCRService:
             # Extract text from response
             extracted_text = response.choices[0].message.content.strip()
             
+            # Check if AI returned error message or no text indicator
+            if self._is_error_message(extracted_text) or extracted_text.upper().strip() == "NOTEXT":
+                return []  # Return empty list if no text could be extracted
+            
             # Split into words and clean them
             words = self._extract_clean_words(extracted_text)
             
             # Remove duplicates while preserving order
             unique_words = list(dict.fromkeys(words))
             
-            return unique_words
+            # Limit to maximum 9 words
+            return unique_words[:9]
             
         except Exception as e:
             logger.error(f"OCR extraction failed: {str(e)}")
@@ -151,6 +156,49 @@ class OCRService:
                 clean_words.append(word)
         
         return clean_words
+    
+    def _is_error_message(self, text: str) -> bool:
+        """Check if the text is an AI error message rather than extracted content"""
+        if not text:
+            return True
+        
+        text_lower = text.lower()
+        
+        # Common AI error patterns
+        error_patterns = [
+            "unable to",
+            "cannot",
+            "can't",
+            "sorry",
+            "i don't see",
+            "no text",
+            "error",
+            "failed",
+            "unable",
+            "not able",
+            "couldn't",
+            "can not",
+            "i cannot",
+            "i can't",
+            "i'm unable",
+            "no readable text",
+            "doesn't appear",
+            "does not appear",
+            "i don't",
+            "apologize",
+            "i apologize"
+        ]
+        
+        # Check if text contains error patterns
+        for pattern in error_patterns:
+            if pattern in text_lower:
+                return True
+        
+        # If text is very long and contains complete sentences, likely an error message
+        if len(text) > 200 and ('.' in text or ',' in text):
+            return True
+            
+        return False
 
 
 # Global instance
