@@ -17,7 +17,8 @@ SUPPORTED_LANGUAGES = [
     {"code": "nl", "name": "Dutch"},
     {"code": "tr", "name": "Turkish"},
     {"code": "pl", "name": "Polish"},
-    {"code": "vi", "name": "Vietnamese"}
+    {"code": "vi", "name": "Vietnamese"},
+    {"code": "uz", "name": "Uzbek"}
 ]
 
 DEFAULT_VOICES = {
@@ -35,7 +36,8 @@ DEFAULT_VOICES = {
     "nl": "Lotte",      # Dutch
     "tr": "Murat",      # Turkish
     "pl": "Tadeusz",    # Polish
-    "vi": "Nga"         # Vietnamese
+    "vi": "Nga",        # Vietnamese
+    "uz": "Gulnora"     # Uzbek
 }
 
 # For share code generation: 24² × 8³ = 294,912 combinations
