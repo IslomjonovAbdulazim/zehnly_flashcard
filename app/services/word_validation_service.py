@@ -6,6 +6,92 @@ class WordValidationService:
     def __init__(self):
         self.client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
     
+    async def validate_and_correct_word_dual(self, word: str, native_language: str, learning_language: str) -> Dict[str, any]:
+        """
+        Validate word against both native and learning languages, return best match
+        
+        Returns:
+        {
+            "is_valid": bool,
+            "corrected_word": str,
+            "confidence": float,
+            "suggestion": str,
+            "detected_language": str  # "native" or "learning"
+        }
+        """
+        if not settings.OPENAI_API_KEY:
+            return {
+                "is_valid": True,
+                "corrected_word": word.strip(),
+                "confidence": 0.5,
+                "suggestion": None,
+                "detected_language": "native"
+            }
+        
+        try:
+            cleaned_word = self._clean_input(word)
+            
+            if not cleaned_word:
+                return {
+                    "is_valid": False,
+                    "corrected_word": word,
+                    "confidence": 0.0,
+                    "suggestion": "Input appears to be empty or invalid",
+                    "detected_language": "native"
+                }
+            
+            # Try validation in both languages
+            native_result = await self._validate_for_language(cleaned_word, native_language)
+            learning_result = await self._validate_for_language(cleaned_word, learning_language)
+            
+            # Compare confidence and pick the best match
+            if native_result["confidence"] >= learning_result["confidence"]:
+                native_result["detected_language"] = "native"
+                return native_result
+            else:
+                learning_result["detected_language"] = "learning"
+                return learning_result
+                
+        except Exception as e:
+            print(f"Dual word validation error: {str(e)}")
+            return {
+                "is_valid": True,
+                "corrected_word": self._clean_input(word),
+                "confidence": 0.5,
+                "suggestion": None,
+                "detected_language": "native"
+            }
+
+    async def _validate_for_language(self, word: str, language: str) -> Dict[str, any]:
+        """Validate word for a specific language"""
+        prompt = self._create_validation_prompt(word, language)
+        
+        response = self.client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a word validation assistant. Your job is to check if a word is valid and correct common typos. Respond only with JSON format."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.1,
+            max_tokens=150
+        )
+        
+        result = self._parse_openai_response(response.choices[0].message.content)
+        final_word = result.get("corrected_word", word)
+        
+        return {
+            "is_valid": result.get("is_valid", True),
+            "corrected_word": final_word,
+            "confidence": result.get("confidence", 0.8),
+            "suggestion": result.get("suggestion")
+        }
+
     async def validate_and_correct_word(self, word: str, native_language: str = "uz") -> Dict[str, any]:
         """
         Validate and correct a word using OpenAI
