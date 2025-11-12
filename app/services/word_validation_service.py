@@ -246,6 +246,7 @@ TASK: Return the word in {native_language.upper()} language ALWAYS.
 1. If word is in {native_language.upper()}: Keep it, fix typos if needed
 2. If word is in {learning_language.upper()}: Translate to {native_language.upper()}  
 3. If word is in OTHER language (Russian, Spanish, French, etc.): Translate to {native_language.upper()}
+4. If word is GIBBERISH/INVALID: Provide random {native_language.upper()} vocabulary word for practice
 
 LANGUAGE RECOGNITION HINTS:
 - {native_language.upper()}: {native_examples}
@@ -278,10 +279,16 @@ OTHER languages:
 - "libro" (Spanish) → {{"corrected_word": "[translate_to_{native_language}]", "detected_language": "other", "suggestion": "Translated Spanish to {native_language.upper()}"}}
 - "livre" (French) → {{"corrected_word": "[translate_to_{native_language}]", "detected_language": "other", "suggestion": "Translated French to {native_language.upper()}"}}
 
+GIBBERISH/INVALID:
+- "fnweoifbweof" → {{"corrected_word": "{native_examples.split(', ')[0]}", "detected_language": "other", "confidence": 0.3, "suggestion": "Random {native_language.upper()} word for practice"}}
+- "123456" → {{"corrected_word": "{native_examples.split(', ')[1]}", "detected_language": "other", "confidence": 0.3, "suggestion": "Random {native_language.upper()} word for practice"}}
+- "!@#$%" → {{"corrected_word": "{native_examples.split(', ')[2]}", "detected_language": "other", "confidence": 0.3, "suggestion": "Random {native_language.upper()} word for practice"}}
+
 BE CAREFUL: 
 - "{native_examples.split(', ')[0]}" is {native_language.upper()}, not English!
 - "piyola" is {native_language.upper()}, not foreign!
 - Don't confuse similar-looking words between languages!
+- For gibberish, ALWAYS return a valid {native_language.upper()} word from the examples list!
 """
     
     def _create_validation_prompt(self, word: str, native_language: str) -> str:
