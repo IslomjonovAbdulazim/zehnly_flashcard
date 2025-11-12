@@ -109,8 +109,9 @@ class VocabularyService:
             )
             
             # Simple storage: native word → target translation
-            final_original_word = validated_word  # native word
-            final_translated_word = translation_result["translated_text"]  # target word
+            import html
+            final_original_word = html.unescape(validated_word)  # native word (decoded)
+            final_translated_word = html.unescape(translation_result["translated_text"])  # target word (decoded)
             final_original_language = folder.native_language
                 
         except Exception as e:
