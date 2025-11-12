@@ -78,7 +78,7 @@ class VocabularyService:
         
         if WORD_VALIDATION_ENABLED:
             try:
-                validation_result = await word_validation_service.validate_and_correct_word(original_word)
+                validation_result = await word_validation_service.validate_and_correct_word(original_word, folder.native_language)
                 
                 # AI now always returns valid=true and provides a useful word
                 # No need to reject anymore - AI will extract/correct anything into a useful word
@@ -95,35 +95,17 @@ class VocabularyService:
                 print(f"Word validation failed, continuing with original word: {str(e)}")
                 validated_word = original_word
         
-        # Step 2: Detect source language and handle translation (using Google Translate)
+        # Step 2: Direct translation from native language to target language
         try:
-            detected_lang = await translation_service.detect_language(validated_word)
-            # Default to English if detection fails or returns null
-            if not detected_lang:
-                detected_lang = "en"
+            # Use folder's native language as source (no detection needed)
+            translation_result = await translation_service.translate_text(
+                validated_word, folder.target_language, folder.native_language
+            )
             
-            # Normalize language codes for comparison (treat 'gb' as 'en')
-            normalized_folder_target = "en" if folder.target_language == "gb" else folder.target_language
-            
-            # Check if detected language matches folder's target language
-            if detected_lang == normalized_folder_target:
-                # Same language case: translate to Uzbek and reverse the storage
-                uzbek_translation = await translation_service.translate_text(
-                    validated_word, "uz", detected_lang  # Translate to Uzbek
-                )
-                # Store Uzbek as original, target language word as translated
-                final_original_word = uzbek_translation["translated_text"]
-                final_translated_word = validated_word
-                final_original_language = "uz"
-            else:
-                # Different language case: normal translation
-                translation_result = await translation_service.translate_text(
-                    validated_word, folder.target_language, detected_lang
-                )
-                # Store as normal
-                final_original_word = validated_word
-                final_translated_word = translation_result["translated_text"] 
-                final_original_language = detected_lang
+            # Simple storage: native word as original, translation as translated
+            final_original_word = validated_word
+            final_translated_word = translation_result["translated_text"]
+            final_original_language = folder.native_language
                 
         except Exception as e:
             raise APIException(

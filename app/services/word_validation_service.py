@@ -6,7 +6,7 @@ class WordValidationService:
     def __init__(self):
         self.client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
     
-    async def validate_and_correct_word(self, word: str) -> Dict[str, any]:
+    async def validate_and_correct_word(self, word: str, native_language: str = "uz") -> Dict[str, any]:
         """
         Validate and correct a word using OpenAI
         
@@ -40,7 +40,7 @@ class WordValidationService:
                 }
             
             # Check if word needs correction
-            prompt = self._create_validation_prompt(cleaned_word)
+            prompt = self._create_validation_prompt(cleaned_word, native_language)
             
             response = self.client.chat.completions.create(
                 model="gpt-3.5-turbo",
@@ -102,24 +102,33 @@ class WordValidationService:
             
         return cleaned.strip()
     
-    def _create_validation_prompt(self, word: str) -> str:
+    def _create_validation_prompt(self, word: str, native_language: str) -> str:
         """Create prompt for OpenAI validation"""
+        # Language mappings for better prompts
+        language_examples = {
+            "uz": "kitob, uy, salom, ona, ota, bola, dost, maktab, ish",
+            "en": "book, house, hello, mother, father, child, friend, school, work",
+            "ru": "книга, дом, привет, мама, папа, ребёнок, друг, школа, работа",
+            "es": "libro, casa, hola, madre, padre, niño, amigo, escuela, trabajo",
+            "fr": "livre, maison, salut, mère, père, enfant, ami, école, travail",
+            "de": "Buch, Haus, hallo, Mutter, Vater, Kind, Freund, Schule, Arbeit"
+        }
+        
+        native_examples = language_examples.get(native_language, "word, example, vocabulary")
+        
         return f"""
 Extract and correct a single meaningful word from this input: "{word}"
 
-IMPORTANT: 90% of users are UZBEK speakers. Be smart about language detection and correction.
+IMPORTANT: User's native language is {native_language.upper()}. Validate for this language context.
 
 Rules:
-1. PRIORITIZE UZBEK: If input looks like it could be Uzbek, treat it as valid Uzbek word
-2. ALSO CORRECT OTHER LANGUAGES: Fix typos in Russian, English, Spanish, etc.
-3. Common corrections:
-   - Uzbek: kitob, uy, salom, ona, ota, bola, dost, maktab, ish
-   - Russian: книга→kniga, дом→dom, привет→privet, мама→mama  
-   - English: bookk→book, houes→house, frend→friend
-4. If it's a sentence, extract the MOST IMPORTANT single word
-5. If it has numbers/symbols, remove them but keep the corrected word
-6. Only if clearly gibberish, provide a random vocabulary word
-7. NEVER change valid words to different languages (kitob stays kitob, not book)
+1. ASSUME NATIVE LANGUAGE: Treat input as {native_language.upper()} unless clearly another language
+2. CORRECT TYPOS: Fix spelling errors in the native language
+3. TRANSLATE IF FOREIGN: If input is clearly a foreign word, translate it to {native_language.upper()}
+4. Common {native_language.upper()} words: {native_examples}
+5. If it's a sentence, extract the MOST IMPORTANT single word
+6. If it has numbers/symbols, remove them but keep the corrected word
+7. Only if clearly gibberish, provide a random {native_language.upper()} vocabulary word
 
 Respond in JSON format:
 {{
@@ -129,15 +138,11 @@ Respond in JSON format:
     "suggestion": "explanation of what you did"
 }}
 
-Examples:
-- "kitob" → {{"is_valid": true, "corrected_word": "kitob", "confidence": 0.9, "suggestion": "Valid Uzbek word"}}
-- "kniga" → {{"is_valid": true, "corrected_word": "книга", "confidence": 0.9, "suggestion": "Fixed Russian spelling"}}
-- "bookk" → {{"is_valid": true, "corrected_word": "book", "confidence": 0.9, "suggestion": "Fixed English typo"}}
-- "men onamni yaxshi ko'raman" → {{"is_valid": true, "corrected_word": "ona", "confidence": 0.8, "suggestion": "Extracted 'ona' from Uzbek sentence"}}
-- "book 2" → {{"is_valid": true, "corrected_word": "book", "confidence": 0.9, "suggestion": "Removed number"}}
-- "kitobb" → {{"is_valid": true, "corrected_word": "kitob", "confidence": 0.8, "suggestion": "Fixed Uzbek typo"}}
-- "fnweoibfpiwqbfuyiwqepbf" → {{"is_valid": true, "corrected_word": "dost", "confidence": 0.5, "suggestion": "Random Uzbek word for practice"}}
-- "hello" → {{"is_valid": true, "corrected_word": "hello", "confidence": 1.0, "suggestion": "Valid English word"}}
+Examples for {native_language.upper()} native speakers:
+- Native word: → {{"is_valid": true, "corrected_word": "native_word", "confidence": 0.9, "suggestion": "Valid {native_language.upper()} word"}}
+- Foreign word: → {{"is_valid": true, "corrected_word": "translated_to_{native_language}", "confidence": 0.8, "suggestion": "Translated foreign word to {native_language.upper()}"}}
+- Typo: → {{"is_valid": true, "corrected_word": "corrected_word", "confidence": 0.8, "suggestion": "Fixed {native_language.upper()} typo"}}
+- Gibberish: → {{"is_valid": true, "corrected_word": "random_{native_language}_word", "confidence": 0.5, "suggestion": "Random {native_language.upper()} word for practice"}}
 """
     
     def _parse_openai_response(self, response_text: str) -> Dict:
