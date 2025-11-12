@@ -78,15 +78,15 @@ class VocabularyService:
         
         if WORD_VALIDATION_ENABLED:
             try:
-                validation_result = await word_validation_service.validate_and_correct_word_dual(
+                validation_result = await word_validation_service.validate_and_correct_word_smart(
                     original_word, folder.native_language, folder.target_language
                 )
                 
                 # AI now always returns valid=true and provides a useful word
                 # No need to reject anymore - AI will extract/correct anything into a useful word
                 
-                # Use corrected word and determine detected language
-                validated_word = validation_result["corrected_word"]
+                # Smart validation always returns native language word
+                validated_word = validation_result["corrected_word"]  # Already in native language
                 validation_suggestion = validation_result.get("suggestion")
                 detected_language = validation_result.get("detected_language", "native")
                 
@@ -97,30 +97,21 @@ class VocabularyService:
                 # For other errors, log and continue with original word
                 print(f"Word validation failed, continuing with original word: {str(e)}")
                 validated_word = original_word
-                detected_language = "native"
         else:
-            # If validation disabled, assume native language
-            detected_language = "native"
+            # If validation disabled, use original word
+            validated_word = original_word
         
-        # Step 2: Smart translation based on detected language
+        # Step 2: Simple translation - native word to target language
         try:
-            if detected_language == "native":
-                # Word is in native language: native → target
-                translation_result = await translation_service.translate_text(
-                    validated_word, folder.target_language, folder.native_language
-                )
-                final_original_word = validated_word  # native word
-                final_translated_word = translation_result["translated_text"]  # target word
-                final_original_language = folder.native_language
-                
-            else:  # detected_language == "learning"
-                # Word is in learning language: learning → native
-                translation_result = await translation_service.translate_text(
-                    validated_word, folder.native_language, folder.target_language
-                )
-                final_original_word = translation_result["translated_text"]  # native word
-                final_translated_word = validated_word  # learning word
-                final_original_language = folder.native_language
+            # validated_word is always in native language (thanks to smart validation)
+            translation_result = await translation_service.translate_text(
+                validated_word, folder.target_language, folder.native_language
+            )
+            
+            # Simple storage: native word → target translation
+            final_original_word = validated_word  # native word
+            final_translated_word = translation_result["translated_text"]  # target word
+            final_original_language = folder.native_language
                 
         except Exception as e:
             raise APIException(

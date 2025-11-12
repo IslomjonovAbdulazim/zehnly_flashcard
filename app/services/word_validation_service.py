@@ -6,17 +6,21 @@ class WordValidationService:
     def __init__(self):
         self.client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
     
-    async def validate_and_correct_word_dual(self, word: str, native_language: str, learning_language: str) -> Dict[str, any]:
+    async def validate_and_correct_word_smart(self, word: str, native_language: str, learning_language: str) -> Dict[str, any]:
         """
-        Validate word against both native and learning languages, return best match
+        3-Tier Smart Validation: Always normalizes to native language
+        
+        Tier 1: Try as native language
+        Tier 2: Try as learning language → translate to native
+        Tier 3: Try as any language → translate to native
         
         Returns:
         {
             "is_valid": bool,
-            "corrected_word": str,
+            "corrected_word": str,  # Always in native language
             "confidence": float,
             "suggestion": str,
-            "detected_language": str  # "native" or "learning"
+            "detected_language": str  # "native", "learning", or "other"
         }
         """
         if not settings.OPENAI_API_KEY:
@@ -40,20 +44,12 @@ class WordValidationService:
                     "detected_language": "native"
                 }
             
-            # Try validation in both languages
-            native_result = await self._validate_for_language(cleaned_word, native_language)
-            learning_result = await self._validate_for_language(cleaned_word, learning_language)
-            
-            # Compare confidence and pick the best match
-            if native_result["confidence"] >= learning_result["confidence"]:
-                native_result["detected_language"] = "native"
-                return native_result
-            else:
-                learning_result["detected_language"] = "learning"
-                return learning_result
+            # Use the new 3-tier validation
+            result = await self._validate_3_tier(cleaned_word, native_language, learning_language)
+            return result
                 
         except Exception as e:
-            print(f"Dual word validation error: {str(e)}")
+            print(f"Smart word validation error: {str(e)}")
             return {
                 "is_valid": True,
                 "corrected_word": self._clean_input(word),
@@ -61,6 +57,38 @@ class WordValidationService:
                 "suggestion": None,
                 "detected_language": "native"
             }
+
+    async def _validate_3_tier(self, word: str, native_language: str, learning_language: str) -> Dict[str, any]:
+        """3-Tier validation that always returns native language word"""
+        
+        # Create smart prompt for 3-tier validation
+        prompt = self._create_smart_validation_prompt(word, native_language, learning_language)
+        
+        response = self.client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a smart language validator. Always return words in the user's native language. Respond only with JSON format."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.1,
+            max_tokens=200
+        )
+        
+        result = self._parse_openai_response(response.choices[0].message.content)
+        
+        return {
+            "is_valid": result.get("is_valid", True),
+            "corrected_word": result.get("corrected_word", word),
+            "confidence": result.get("confidence", 0.8),
+            "suggestion": result.get("suggestion"),
+            "detected_language": result.get("detected_language", "native")
+        }
 
     async def _validate_for_language(self, word: str, language: str) -> Dict[str, any]:
         """Validate word for a specific language"""
@@ -175,9 +203,11 @@ class WordValidationService:
         # Remove extra whitespace
         cleaned = word.strip()
         
-        # Remove numbers and special characters, keep only letters, spaces, hyphens, apostrophes
+        # Remove numbers and special characters, keep Unicode letters (all languages)
         import re
-        cleaned = re.sub(r'[^a-zA-ZÀ-ÿ\s\'-]', '', cleaned)
+        # Keep all Unicode letters + spaces + hyphens + apostrophes
+        # This includes Latin, Cyrillic, Arabic, Chinese, etc.
+        cleaned = re.sub(r'[^\w\s\'-]', '', cleaned, flags=re.UNICODE)
         
         # Remove multiple spaces
         cleaned = re.sub(r'\s+', ' ', cleaned)
@@ -187,6 +217,72 @@ class WordValidationService:
             cleaned = cleaned[:50]
             
         return cleaned.strip()
+    
+    def _create_smart_validation_prompt(self, word: str, native_language: str, learning_language: str) -> str:
+        """Create 3-tier smart validation prompt"""
+        # Language mappings
+        language_examples = {
+            "uz": "kitob, uy, salom, ona, ota, bola, dost, maktab, ish",
+            "en": "book, house, hello, mother, father, child, friend, school, work",
+            "ru": "книга, дом, привет, мама, папа, ребёнок, друг, школа, работа",
+            "es": "libro, casa, hola, madre, padre, niño, amigo, escuela, trabajo",
+            "fr": "livre, maison, salut, mère, père, enfant, ami, école, travail",
+            "de": "Buch, Haus, hallo, Mutter, Vater, Kind, Freund, Schule, Arbeit"
+        }
+        
+        native_examples = language_examples.get(native_language, "word, example")
+        learning_examples = language_examples.get(learning_language, "word, example")
+        
+        return f"""
+Analyze this input: "{word}"
+
+CONTEXT:
+- User's NATIVE language: {native_language.upper()} (examples: {native_examples})
+- User's LEARNING language: {learning_language.upper()} (examples: {learning_examples})
+
+TASK: Return the word in {native_language.upper()} language ALWAYS.
+
+3-TIER LOGIC:
+1. If word is in {native_language.upper()}: Keep it, fix typos if needed
+2. If word is in {learning_language.upper()}: Translate to {native_language.upper()}  
+3. If word is in OTHER language (Russian, Spanish, French, etc.): Translate to {native_language.upper()}
+
+LANGUAGE RECOGNITION HINTS:
+- {native_language.upper()}: {native_examples}
+- {learning_language.upper()}: {learning_examples}
+- Russian: книга, дом, привет, мама (Cyrillic script)
+- Spanish: libro, casa, hola, madre (Latin with ñ, accents)
+- French: livre, maison, bonjour, mère (Latin with accents)
+
+CRITICAL: Always normalize to {native_language.upper()} regardless of input language!
+
+Respond in JSON:
+{{
+    "is_valid": true,
+    "corrected_word": "word_in_{native_language}",
+    "confidence": 0.0-1.0,
+    "detected_language": "native|learning|other",
+    "suggestion": "explanation of what you did"
+}}
+
+SPECIFIC EXAMPLES:
+
+NATIVE ({native_language.upper()}) words:
+- {native_examples.split(', ')[0]} → {{"corrected_word": "{native_examples.split(', ')[0]}", "detected_language": "native", "suggestion": "Valid {native_language.upper()} word"}}
+
+LEARNING ({learning_language.upper()}) words:
+- {learning_examples.split(', ')[0]} → {{"corrected_word": "[translate_to_{native_language}]", "detected_language": "learning", "suggestion": "Translated {learning_language.upper()} to {native_language.upper()}"}}
+
+OTHER languages:
+- "книга" (Russian) → {{"corrected_word": "[translate_to_{native_language}]", "detected_language": "other", "suggestion": "Translated Russian to {native_language.upper()}"}}
+- "libro" (Spanish) → {{"corrected_word": "[translate_to_{native_language}]", "detected_language": "other", "suggestion": "Translated Spanish to {native_language.upper()}"}}
+- "livre" (French) → {{"corrected_word": "[translate_to_{native_language}]", "detected_language": "other", "suggestion": "Translated French to {native_language.upper()}"}}
+
+BE CAREFUL: 
+- "{native_examples.split(', ')[0]}" is {native_language.upper()}, not English!
+- "piyola" is {native_language.upper()}, not foreign!
+- Don't confuse similar-looking words between languages!
+"""
     
     def _create_validation_prompt(self, word: str, native_language: str) -> str:
         """Create prompt for OpenAI validation"""
